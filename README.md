@@ -5,6 +5,10 @@ textures and HDRIs at once, and bring free ones straight into the game. Search r
 public [3D Asset Server](https://github.com/arielshad/3d-asset-server) at `https://3d.shep.bot`;
 files are downloaded directly from the source sites.
 
+## Install
+
+In Genex: **Plugins → Add → Install from GitHub** and paste `https://github.com/arklanq/genex-asset-search`. Studio installs the latest release. To install by hand instead, download `asset-search-<version>.zip` from [Releases](https://github.com/arklanq/genex-asset-search/releases), unpack it and choose its folder with **Plugins → Add → Load local plugin…**.
+
 ## Tools
 
 | Tool | What it does |
@@ -40,3 +44,13 @@ node /path/to/genex-desktop/scripts/plugin-doctor.ts plugin
 ```
 
 Load `plugin/` in Studio with Plugins → Add → Load local plugin…, then press **Watch folder**.
+
+## Release
+
+Bump `version` in `plugin/plugin.json` and `package.json`, commit, then push a matching tag:
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+The Release workflow runs the tests and publishes a GitHub release with `asset-search-<version>.zip` attached.
