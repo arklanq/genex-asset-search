@@ -75,6 +75,7 @@ const MESSAGE = {
   TooLargeUnpacked: "The archive unpacks to more than 1 GiB.",
   TooManyRedirects: "Too many redirects.",
   BadZip: "The archive is damaged or uses a format the plugin cannot unpack (ZIP64 or encryption).",
+  NotJson: "the answer was not JSON",
   Server: (status, reason) => `3D Asset Server ${status}: ${reason}`,
   Source: (host, status) => `${host} answered ${status}.`,
   UnknownTool: "Unknown 3D asset tool.",
@@ -95,8 +96,9 @@ async function server(route, signal) {
     signal: AbortSignal.any([AbortSignal.timeout(SEARCH_TIMEOUT_MS), ...(signal ? [signal] : [])]),
   });
   const body = await response.json().catch(() => null);
-  if (response.ok) return body;
-  throw new Error(MESSAGE.Server(response.status, body?.error ?? response.statusText));
+  // A proxy or portal can answer 200 with a web page; callers need the JSON object.
+  if (response.ok && body && typeof body === "object") return body;
+  throw new Error(MESSAGE.Server(response.status, body?.error ?? (response.ok ? MESSAGE.NotJson : response.statusText)));
 }
 
 /** @type {{ at: number, list: any[] } | undefined} */

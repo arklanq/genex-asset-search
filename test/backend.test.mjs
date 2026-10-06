@@ -289,3 +289,8 @@ test("details reports the files a download would fetch for the chosen format", a
     { file: "crate_2k.gltf", format: "gltf", resolution: undefined, bytes: undefined, companions: 2, needsLogin: undefined },
   ]);
 });
+
+test("an answer from the asset server that is not JSON is reported as the server's", async () => {
+  globalThis.fetch = async () => new Response("<html>Gateway</html>", { headers: { "content-type": "text/html" } });
+  await assert.rejects(plugin.tool("details", { id: "polyhaven:crate" }, ctx), /^Error: 3D Asset Server 200/);
+});
