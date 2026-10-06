@@ -11,12 +11,20 @@
   "network": {
     "hosts": [
       "3d.shep.bot",
+      "*.3d.shep.bot",
+      "polyhaven.org",
       "*.polyhaven.org",
       "ambientcg.com",
+      "*.ambientcg.com",
+      "struffelproductions.com",
       "*.struffelproductions.com",
+      "blenderkit.com",
       "*.blenderkit.com",
       "kenney.nl",
-      "www.texturecan.com",
+      "*.kenney.nl",
+      "texturecan.com",
+      "*.texturecan.com",
+      "hdrmaps.com",
       "*.hdrmaps.com"
     ]
   },

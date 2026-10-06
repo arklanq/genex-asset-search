@@ -8,7 +8,7 @@ import { inflateRawSync } from "node:zlib";
 
 /** The public 3D Asset Server (github.com/arielshad/3d-asset-server). */
 const API = "https://3d.shep.bot";
-/** Hosts the plugin downloads files from, each also matching its subdomains. Keep in step with network.hosts. */
+/** Hosts the plugin downloads files from, each also matching its subdomains. network.hosts lists each as `host` and `*.host`. */
 const FILE_HOSTS = [
   "3d.shep.bot",
   "polyhaven.org",
