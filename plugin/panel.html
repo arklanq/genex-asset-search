@@ -314,7 +314,10 @@ function render(next) {
   $("free-title").textContent = state.freeOnly ? WORDS.freeOnTitle : WORDS.freeOffTitle;
   $("free-line").textContent = state.freeOnly ? WORDS.freeOn : WORDS.freeOff;
   $("count").textContent = WORDS.count(state.sources.filter((s) => s.enabled).length, state.sources.length);
+  // Rebuilding the rows drops keyboard focus, so hand it to the same source's new switch.
+  const focused = document.activeElement?.id;
   $("sources").replaceChildren(...state.sources.map(sourceRow));
+  if (focused) document.getElementById(focused)?.focus();
 }
 
 /** Show the change at once, save it, and put the switch back if saving fails. */
@@ -326,9 +329,7 @@ async function flip(toggle, change) {
   if ("freeOnly" in change) optimistic.freeOnly = change.freeOnly;
   else optimistic.sources.find((s) => s.id === change.source).enabled = change.enabled;
   render(optimistic);
-  const again = document.getElementById(toggle.id);
-  again.disabled = true;
-  again.focus();
+  document.getElementById(toggle.id).disabled = true;
   showError("");
   try {
     const saved = await call("configure", change);
