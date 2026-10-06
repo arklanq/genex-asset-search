@@ -70,6 +70,13 @@ function makeZip(entries) {
   return Buffer.concat([...locals, directory, end]);
 }
 
+/** A zip whose directory points past its own end, as a cut-off download leaves it. */
+function truncatedZip() {
+  const zip = makeZip([{ name: "tree.glb", text: "glb" }]);
+  zip.writeUInt32LE(zip.length + 1000, zip.length - 6);
+  return zip;
+}
+
 /** A fake Studio host whose delivery copies the output tree into the game. */
 function fakeHost(root, game) {
   const host = async (method, args) => {
@@ -237,6 +244,7 @@ test("hostile archives, paths and hosts are refused before anything reaches the 
     [{ files: [{ url: zipUrl, filename: "evil.zip", format: "zip" }], blobs: { [zipUrl]: makeZip([{ name: "/etc/escape", text: "x" }]) } }, /Refused file path/],
     [{ files: [{ url: zipUrl, filename: "evil.zip", format: "zip" }], blobs: { [zipUrl]: Buffer.from("not a zip") } }, /damaged/],
     [{ files: [{ url: zipUrl, filename: "evil.zip", format: "zip" }], blobs: { [zipUrl]: makeZip([{ name: "bomb.bin", text: "x".repeat(4096), size: 16 }]) } }, /damaged/],
+    [{ files: [{ url: zipUrl, filename: "evil.zip", format: "zip" }], blobs: { [zipUrl]: truncatedZip() } }, /damaged/],
     [{ files: [{ ...GLTF, filename: "../crate.gltf" }] }, /Refused file path/],
     [{ files: [{ ...GLTF, includes: [{ path: "../../x.bin", url: GLTF.url }] }] }, /Refused file path/],
     [{ files: [{ ...GLTF, url: "https://evil.example/crate.gltf", includes: [] }] }, /evil\.example is not a host/],

@@ -378,6 +378,16 @@ function inflate(data, size) {
  * @param {string} dir
  */
 async function unzip(zip, dir) {
+  try {
+    await unpackEntries(zip, dir);
+  } catch (error) {
+    // A record pointing outside the file, as a cut-off download leaves it, fails the buffer read.
+    throw error instanceof RangeError ? new Error(MESSAGE.BadZip) : error;
+  }
+}
+
+/** @param {Buffer} zip @param {string} dir */
+async function unpackEntries(zip, dir) {
   const { entries, offset } = zipEnd(zip);
   if (entries > MAX_ZIP_ENTRIES) throw new Error(MESSAGE.BadZip);
   let unpacked = 0;
