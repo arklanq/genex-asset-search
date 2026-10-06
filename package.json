@@ -2,6 +2,7 @@
   "name": "genex-asset-search-plugin",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Genex Studio plugin that searches 3D Asset Server for free 3D models, materials, textures and HDRIs.",
   "type": "module",
   "scripts": {
