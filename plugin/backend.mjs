@@ -359,6 +359,20 @@ function zipEnd(zip) {
 }
 
 /**
+ * Inflate one entry to exactly its declared size; more output means a damaged or hostile archive.
+ * @param {Buffer} data
+ * @param {number} size
+ */
+function inflate(data, size) {
+  try {
+    // zlib refuses a limit of 0, and tools do deflate empty files.
+    return inflateRawSync(data, { maxOutputLength: Math.max(size, 1) });
+  } catch {
+    throw new Error(MESSAGE.BadZip);
+  }
+}
+
+/**
  * Unpack a zip into `dir`, refusing paths that escape it and skipping links.
  * @param {Buffer} zip
  * @param {string} dir
@@ -388,7 +402,7 @@ async function unzip(zip, dir) {
     if (unpacked > MAX_UNPACKED_BYTES) throw new Error(MESSAGE.TooLargeUnpacked);
     const start = local + 30 + zip.readUInt16LE(local + 26) + zip.readUInt16LE(local + 28);
     const data = zip.subarray(start, start + packed);
-    const bytes = method === ZIP_METHOD.Deflate ? inflateRawSync(data, { maxOutputLength: size }) : data;
+    const bytes = method === ZIP_METHOD.Deflate ? inflate(data, size) : data;
     if (![ZIP_METHOD.Stored, ZIP_METHOD.Deflate].includes(method) || bytes.length !== size) throw new Error(MESSAGE.BadZip);
     const target = path.join(dir, relative);
     await mkdir(path.dirname(target), { recursive: true });

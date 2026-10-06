@@ -32,26 +32,27 @@ const GLTF = {
   ],
 };
 
-/** A zip of `entries` ({name, text, symlink?}), deflated like the packs the sources serve. */
+/** A zip of `entries` ({name, text, symlink?, size?}), deflated like the packs the sources serve; `size` overrides the declared size. */
 function makeZip(entries) {
   const locals = [];
   const centrals = [];
   let offset = 0;
-  for (const { name, text, symlink } of entries) {
+  for (const { name, text, symlink, size } of entries) {
     const raw = Buffer.from(text);
+    const declared = size ?? raw.length;
     const packed = deflateRawSync(raw);
     const nameBytes = Buffer.from(name);
     const local = Buffer.alloc(30);
     local.writeUInt32LE(0x04034b50, 0);
     local.writeUInt16LE(8, 8);
     local.writeUInt32LE(packed.length, 18);
-    local.writeUInt32LE(raw.length, 22);
+    local.writeUInt32LE(declared, 22);
     local.writeUInt16LE(nameBytes.length, 26);
     const central = Buffer.alloc(46);
     central.writeUInt32LE(0x02014b50, 0);
     central.writeUInt16LE(8, 10);
     central.writeUInt32LE(packed.length, 20);
-    central.writeUInt32LE(raw.length, 24);
+    central.writeUInt32LE(declared, 24);
     central.writeUInt16LE(nameBytes.length, 28);
     central.writeUInt32LE(((symlink ? 0o120777 : 0o100644) << 16) >>> 0, 38);
     central.writeUInt32LE(offset, 42);
@@ -217,12 +218,25 @@ test("a zip pack is unpacked, skipping links, dot files and macOS clutter", asyn
   assert.equal(await readFile(path.join(game, folder, "kenney_kit/kit/Models/tree.glb"), "utf8"), "glb");
 });
 
+test("a zip pack keeps an empty file that its tool deflated", async () => {
+  const zipUrl = "https://kenney.nl/media/kit.zip";
+  fakeServer({
+    asset: { ...CRATE, id: "kenney:kit", provider: "kenney" },
+    files: [{ url: zipUrl, filename: "kit.zip", format: "zip" }],
+    blobs: { [zipUrl]: makeZip([{ name: "tree.glb", text: "glb" }, { name: "empty.txt", text: "" }]) },
+  });
+  const result = await plugin.tool("download", { id: "kenney:kit" }, ctx);
+  assert.deepEqual(result.files, [`${result.folder}/kit/empty.txt`, `${result.folder}/kit/tree.glb`]);
+  assert.equal(await readFile(path.join(game, result.folder, "kit/empty.txt"), "utf8"), "");
+});
+
 test("hostile archives, paths and hosts are refused before anything reaches the game", async () => {
   const zipUrl = "https://kenney.nl/media/evil.zip";
   const cases = [
     [{ files: [{ url: zipUrl, filename: "evil.zip", format: "zip" }], blobs: { [zipUrl]: makeZip([{ name: "../../escape.txt", text: "x" }]) } }, /Refused file path/],
     [{ files: [{ url: zipUrl, filename: "evil.zip", format: "zip" }], blobs: { [zipUrl]: makeZip([{ name: "/etc/escape", text: "x" }]) } }, /Refused file path/],
     [{ files: [{ url: zipUrl, filename: "evil.zip", format: "zip" }], blobs: { [zipUrl]: Buffer.from("not a zip") } }, /damaged/],
+    [{ files: [{ url: zipUrl, filename: "evil.zip", format: "zip" }], blobs: { [zipUrl]: makeZip([{ name: "bomb.bin", text: "x".repeat(4096), size: 16 }]) } }, /damaged/],
     [{ files: [{ ...GLTF, filename: "../crate.gltf" }] }, /Refused file path/],
     [{ files: [{ ...GLTF, includes: [{ path: "../../x.bin", url: GLTF.url }] }] }, /Refused file path/],
     [{ files: [{ ...GLTF, url: "https://evil.example/crate.gltf", includes: [] }] }, /evil\.example is not a host/],
