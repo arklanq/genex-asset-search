@@ -5,6 +5,6 @@
   "description": "Genex Studio plugin that searches 3D Asset Server for free 3D models, materials, textures and HDRIs.",
   "type": "module",
   "scripts": {
-    "test": "node --test test/"
+    "test": "node --test"
   }
 }
