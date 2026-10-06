@@ -18,8 +18,8 @@ files are downloaded directly from the source sites.
 
 Plugins → 3D Asset Search → **Configuration**:
 
-- **Free assets only**: on by default. Off lets paid listings show up with their price and link; the
-  plugin never buys anything.
+- The price switch is off by default (**Free assets only**). Switched on (**Free and paid assets**), paid
+  listings show up with their price and link; the plugin never buys anything.
 - One switch per source. A switched-off source is left out of searches and its assets cannot be
   downloaded.
 
@@ -28,7 +28,8 @@ The choices are saved in the plugin's own storage, outside games.
 ## Safety
 
 - Downloads only over https from the hosts in `network.hosts`, checking every redirect.
-- Zip entries that escape the folder are refused; links, dot files and `__MACOSX` are skipped.
+- Zip entries that escape the folder are refused; links, dot files, `node_modules` and `__MACOSX` are
+  skipped. ZIP64, encrypted and damaged archives are refused.
 - 512 MiB per download, 1 GiB unpacked, 5,000 entries per archive.
 
 ## Develop
