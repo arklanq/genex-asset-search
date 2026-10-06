@@ -95,9 +95,10 @@ function fakeHost(root, game) {
 
 /**
  * Route fetch to a canned asset server and canned source files.
- * @param {{ asset?: any, files?: any[], blobs?: Record<string, Buffer | string>, redirects?: Record<string, string> }} [fake]
+ * `assetFiles` is the asset's full file list; the files route, like the real server, leaves out those that need a login.
+ * @param {{ asset?: any, files?: any[], assetFiles?: any[], blobs?: Record<string, Buffer | string>, redirects?: Record<string, string> }} [fake]
  */
-function fakeServer({ asset = CRATE, files = [GLTF], blobs = {}, redirects = {} } = {}) {
+function fakeServer({ asset = CRATE, files = [GLTF], assetFiles = files, blobs = {}, redirects = {} } = {}) {
   const requests = [];
   globalThis.fetch = async (input) => {
     const url = new URL(String(input));
@@ -114,7 +115,7 @@ function fakeServer({ asset = CRATE, files = [GLTF], blobs = {}, redirects = {} 
           ],
         });
       if (url.pathname.endsWith("/files")) return Response.json({ id: asset.id, files, totalBytes: 10 });
-      if (url.pathname.startsWith("/v1/assets/")) return Response.json({ ...asset, files });
+      if (url.pathname.startsWith("/v1/assets/")) return Response.json({ ...asset, files: assetFiles });
     }
     if (redirects[url.href]) return new Response(null, { status: 302, headers: { location: redirects[url.href] } });
     if (blobs[url.href] !== undefined) return new Response(blobs[url.href]);
@@ -251,6 +252,7 @@ test("hostile archives, paths and hosts are refused before anything reaches the 
     [{ files: [{ ...GLTF, url: "http://dl.polyhaven.org/crate.gltf", includes: [] }] }, /not a host/],
     [{ files: [{ ...GLTF, includes: [] }], redirects: { [GLTF.url]: "https://169.254.169.254/latest" } }, /169\.254\.169\.254 is not a host/],
     [{ files: [{ ...GLTF, requiresAuth: true }] }, /needs a login/],
+    [{ files: [], assetFiles: [{ ...GLTF, requiresAuth: true }] }, /needs a login/],
     [{ files: [] }, /no direct download/],
   ];
   for (const [fake, error] of cases) {

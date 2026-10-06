@@ -428,8 +428,10 @@ async function unpackEntries(zip, dir) {
 async function download(args, ctx) {
   const { asset, files } = await lookup(args, ctx);
   if (!asset.files?.length && !files.length) throw new Error(MESSAGE.NoFiles(asset.url));
+  // The server's file selection leaves out files behind a login, so an asset with only those selects none.
+  const loginOnly = asset.files?.length && asset.files.every((/** @type {any} */ f) => f.requiresAuth);
+  if (files.some((f) => f.requiresAuth) || (!files.length && loginOnly)) throw new Error(MESSAGE.NeedsLogin(asset.url));
   if (!files.length) throw new Error(MESSAGE.NoMatch);
-  if (files.some((f) => f.requiresAuth)) throw new Error(MESSAGE.NeedsLogin(asset.url));
   const jobId = randomUUID();
   const dir = path.join(String(await ctx.host("storage.root")), "downloads", jobId);
   const signal = AbortSignal.any([ctx.signal, AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS)]);
