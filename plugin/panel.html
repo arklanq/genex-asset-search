@@ -133,10 +133,11 @@ body[data-ready] .spinner { display: none; }
   <div class="lead">
     <label class="option" for="free-only">
       <span class="text">
-        <span class="name">Free assets only</span>
+        <span class="name" id="free-title"></span>
         <span class="muted small" id="free-line"></span>
       </span>
-      <button class="switch" id="free-only" role="switch" aria-checked="false"></button>
+      <!-- The visible title follows the choice; the switch keeps one name so "on" always means free only. -->
+      <button class="switch" id="free-only" role="switch" aria-checked="false" aria-label="Free assets only"></button>
     </label>
   </div>
   <h3><span>Sources</span><span id="count"></span></h3>
@@ -234,6 +235,8 @@ window.studioPlugin.ui = {
 </script>
 <script>
 const WORDS = {
+  freeOnTitle: "Free assets only",
+  freeOffTitle: "Free and paid assets",
   freeOn: "Paid listings are left out of every search.",
   freeOff: "Paid listings show up too, with their price and a link. Agents never buy anything; they ask you.",
   count: (on, all) => `${on} of ${all} on`,
@@ -307,6 +310,7 @@ function sourceRow(source) {
 function render(next) {
   state = next;
   $("free-only").setAttribute("aria-checked", String(state.freeOnly));
+  $("free-title").textContent = state.freeOnly ? WORDS.freeOnTitle : WORDS.freeOffTitle;
   $("free-line").textContent = state.freeOnly ? WORDS.freeOn : WORDS.freeOff;
   $("count").textContent = WORDS.count(state.sources.filter((s) => s.enabled).length, state.sources.length);
   $("sources").replaceChildren(...state.sources.map(sourceRow));
