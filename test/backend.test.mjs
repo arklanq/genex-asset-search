@@ -294,3 +294,25 @@ test("an answer from the asset server that is not JSON is reported as the server
   globalThis.fetch = async () => new Response("<html>Gateway</html>", { headers: { "content-type": "text/html" } });
   await assert.rejects(plugin.tool("details", { id: "polyhaven:crate" }, ctx), /^Error: 3D Asset Server 200/);
 });
+
+test("quick switches in the panel all persist", async () => {
+  fakeServer();
+  await Promise.all([
+    plugin.action("configure", { source: "kenney", enabled: false }, ctx),
+    plugin.action("configure", { source: "fab", enabled: false }, ctx),
+    plugin.action("configure", { freeOnly: false }, ctx),
+  ]);
+  const settings = await plugin.action("settings", {}, ctx);
+  assert.equal(settings.freeOnly, false);
+  assert.deepEqual(settings.sources.filter((s) => !s.enabled).map((s) => s.id), ["kenney", "fab"]);
+});
+
+test("a download follows a redirect to an allowed host and gives up on a redirect loop", async () => {
+  const cdn = "https://cdn3.struffelproductions.com/crate.gltf";
+  fakeServer({ files: [{ ...GLTF, includes: [] }], redirects: { [GLTF.url]: cdn }, blobs: { [cdn]: "gltf" } });
+  const result = await plugin.tool("download", { id: "polyhaven:crate" }, ctx);
+  assert.equal(await readFile(path.join(game, result.folder, "crate_2k.gltf"), "utf8"), "gltf");
+
+  fakeServer({ files: [{ ...GLTF, includes: [] }], redirects: { [GLTF.url]: GLTF.url } });
+  await assert.rejects(plugin.tool("download", { id: "polyhaven:crate" }, ctx), /Too many redirects/);
+});
