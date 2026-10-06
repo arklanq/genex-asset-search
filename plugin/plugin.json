@@ -40,14 +40,16 @@
             "description": "What to look for, in English, such as \"low poly tree\" or \"mossy rock\"."
           },
           "types": {
-            "type": "string"
+            "type": "string",
+            "description": "Comma-separated kinds, such as \"model\" or \"material,texture\". Leave out for every kind."
           },
           "limit": {
             "type": "number",
             "description": "How many results, 1-30; default 10."
           },
           "offset": {
-            "type": "number"
+            "type": "number",
+            "description": "Skip this many results from each source, to see more after a first search; default 0."
           }
         },
         "required": ["query"]
@@ -60,13 +62,16 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "description": "An asset id from asset-search__search, such as polyhaven:wooden_crate_01."
           },
           "format": {
-            "type": "string"
+            "type": "string",
+            "description": "File format, such as glb, gltf, fbx, hdr, jpg or zip. Leave out for a game-friendly default."
           },
           "resolution": {
-            "type": "string"
+            "type": "string",
+            "description": "Texture or HDRI resolution, such as 1k, 2k or 4k. Leave out for the one closest to 2k."
           }
         },
         "required": ["id"]
@@ -74,18 +79,21 @@
     },
     {
       "name": "download",
-      "description": "Download one asset with downloadable true into the game, with its textures and companion files; zip packs are unpacked. Free. Takes the same format and resolution as asset-search__details. Returns the folder, the delivered files, entries (the model and HDRI files to load) and the credit line when the licence asks for one.",
+      "description": "Download one asset with downloadable true into the game, with its textures and companion files; zip packs are unpacked. Free. Takes the same format and resolution as asset-search__details. Returns the folder, the delivered files as paths in the game, entries (the model and HDRI files to load) and the credit line when the licence asks for one.",
       "parameters": {
         "type": "object",
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "description": "An asset id from asset-search__search, such as polyhaven:wooden_crate_01."
           },
           "format": {
-            "type": "string"
+            "type": "string",
+            "description": "File format, such as glb, gltf, fbx, hdr, jpg or zip. Leave out for a game-friendly default."
           },
           "resolution": {
-            "type": "string"
+            "type": "string",
+            "description": "Texture or HDRI resolution, such as 1k, 2k or 4k. Leave out for the one closest to 2k."
           }
         },
         "required": ["id"]
