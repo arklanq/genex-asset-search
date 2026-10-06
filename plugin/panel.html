@@ -131,13 +131,13 @@ body[data-ready] .spinner { display: none; }
   <h2 id="title">Search sources</h2>
   <p class="muted">Agents search only the sources switched on here, and only for the kind of asset you allow.</p>
   <div class="lead">
-    <label class="option" for="free-only">
+    <label class="option" for="paid">
       <span class="text">
         <span class="name" id="free-title"></span>
         <span class="muted small" id="free-line"></span>
       </span>
-      <!-- The visible title follows the choice; the switch keeps one name so "on" always means free only. -->
-      <button class="switch" id="free-only" role="switch" aria-checked="false" aria-label="Free assets only"></button>
+      <!-- The visible title follows the choice; the switch keeps one name so "on" always means paid assets are allowed. -->
+      <button class="switch" id="paid" role="switch" aria-checked="false" aria-label="Include paid assets"></button>
     </label>
   </div>
   <h3><span>Sources</span><span id="count"></span></h3>
@@ -309,7 +309,8 @@ function sourceRow(source) {
 
 function render(next) {
   state = next;
-  $("free-only").setAttribute("aria-checked", String(state.freeOnly));
+  // The switch reads the other way round from the setting: on lets paid assets in.
+  $("paid").setAttribute("aria-checked", String(!state.freeOnly));
   $("free-title").textContent = state.freeOnly ? WORDS.freeOnTitle : WORDS.freeOffTitle;
   $("free-line").textContent = state.freeOnly ? WORDS.freeOn : WORDS.freeOff;
   $("count").textContent = WORDS.count(state.sources.filter((s) => s.enabled).length, state.sources.length);
@@ -359,7 +360,7 @@ function reveal() {
   $("spinner").removeAttribute("role");
 }
 
-$("free-only").onclick = () => state && flip($("free-only"), { freeOnly: !state.freeOnly });
+$("paid").onclick = () => state && flip($("paid"), { freeOnly: !state.freeOnly });
 
 const stop = window.studioPlugin.onContextChanged(() => {
   applyTheme();
