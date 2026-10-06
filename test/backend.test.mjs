@@ -77,12 +77,12 @@ function truncatedZip() {
   return zip;
 }
 
-/** A fake Studio host whose delivery copies the output tree into the game. */
-function fakeHost(root, game) {
+/** A fake Studio host whose delivery copies the output tree into the game, under `assetRoot` as Studio does for a game with a build step. */
+function fakeHost(root, game, assetRoot = "") {
   const host = async (method, args) => {
     if (method === "storage.root") return root;
     if (method !== "assets.deliver") throw new Error(`unexpected host call ${method}`);
-    const target = path.join(game, "assets", "asset-search", args.jobId);
+    const target = path.join(game, assetRoot, "assets", "asset-search", args.jobId);
     await cp(args.output, target, { recursive: true });
     const files = await readdir(target, { recursive: true, withFileTypes: true });
     return files
@@ -198,6 +198,13 @@ test("download puts a glTF and its companions at their relative paths and return
   assert.equal(await readFile(path.join(game, folder, "textures/crate_diff.jpg"), "utf8"), "body of /crate/diff.jpg");
   assert.equal(result.attribution, '"Crate" by Ana, CC-BY, https://polyhaven.com/a/crate');
   assert.deepEqual(await readdir(path.join(root, "downloads")), [], "staging copy removed");
+});
+
+test("download names the folder Studio delivered to, also inside public/ for a game with a build step", async () => {
+  fakeServer();
+  const result = await plugin.tool("download", { id: "polyhaven:crate" }, fakeHost(root, game, "public"));
+  assert.match(result.folder, /^public\/assets\/asset-search\/[a-f0-9-]{36}$/);
+  assert.ok(result.files.every((f) => f.startsWith(`${result.folder}/`)));
 });
 
 test("a zip pack is unpacked, skipping links, dot files and macOS clutter", async () => {

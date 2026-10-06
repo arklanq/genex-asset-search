@@ -11,7 +11,7 @@ files are downloaded directly from the source sites.
 | --- | --- |
 | `asset-search__search` | Ranked results from the sources switched on, with licence, price, formats and `downloadable`. |
 | `asset-search__details` | Licence, credit line and the exact files a download would bring in. |
-| `asset-search__download` | Downloads an asset with its companion files into `assets/asset-search/<job>/`, unpacking zip packs. |
+| `asset-search__download` | Downloads an asset with its companion files into `assets/asset-search/<job>/` (`public/assets/…` in a game with a build step), unpacking zip packs. |
 | `asset-search__sources` | The sources and the user's choices. |
 
 ## Configuration

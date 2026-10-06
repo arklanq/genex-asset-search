@@ -456,12 +456,15 @@ async function download(args, ctx) {
     const rank = (/** @type {string} */ f) => ENTRY_EXTENSIONS.indexOf(path.extname(f).toLowerCase());
     // Web-friendly formats first: a pack often ships the same models as FBX, OBJ and glTF.
     const entries = delivered.filter((f) => rank(f) >= 0).sort((a, b) => rank(a) - rank(b));
+    // A game with a build step gets its assets under public/, so the folder comes from what Studio delivered.
+    const first = delivered[0];
+    const folder = first ? first.slice(0, first.indexOf(jobId) + jobId.length) : `assets/asset-search/${jobId}`;
     return {
       id: asset.id,
       title: asset.title,
       license: asset.license?.name,
       attribution: attribution(asset),
-      folder: `assets/asset-search/${jobId}`,
+      folder,
       fileCount: delivered.length,
       entries: entries.slice(0, LISTED_FILES),
       files: delivered.slice(0, LISTED_FILES),
