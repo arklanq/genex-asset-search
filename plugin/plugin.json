@@ -1,7 +1,7 @@
 {
   "apiVersion": 3,
   "id": "asset-search",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "name": "3D Asset Search",
   "publisher": "Arek Nurzyński",
   "description": "Search 17 sites for 3D models, materials, textures and HDRIs at once and bring free ones into the game, through 3D Asset Server.",
