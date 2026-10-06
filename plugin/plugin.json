@@ -1,0 +1,119 @@
+{
+  "apiVersion": 3,
+  "id": "asset-search",
+  "version": "0.1.0",
+  "name": "3D Asset Search",
+  "publisher": "Arek Nurzyński",
+  "description": "Search 17 sites for 3D models, materials, textures and HDRIs at once and bring free ones into the game, through 3D Asset Server.",
+  "backend": "backend.mjs",
+  "capabilities": ["network", "project.write"],
+  "network": {
+    "hosts": [
+      "3d.shep.bot",
+      "*.polyhaven.org",
+      "ambientcg.com",
+      "*.struffelproductions.com",
+      "*.blenderkit.com",
+      "kenney.nl",
+      "www.texturecan.com",
+      "*.hdrmaps.com"
+    ]
+  },
+  "tools": [
+    {
+      "name": "search",
+      "description": "Search the sources the user switched on for 3D assets. Free. types narrows the kind: comma-separated model, texture, material, hdri, sprite, ui, audio, font, pack, other. Results are ranked and carry id, licence, price, formats and whether the plugin can download them (downloadable). freeOnly says whether the user allows only free assets. alsoSearchOn lists sites that block automated search, as links to their own search.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "What to look for, in English, such as \"low poly tree\" or \"mossy rock\"."
+          },
+          "types": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "number",
+            "description": "How many results, 1-30; default 10."
+          },
+          "offset": {
+            "type": "number"
+          }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "details",
+      "description": "Licence, credit line, formats and the exact files asset-search__download would bring in for an asset id, with their sizes. Free. format (glb, gltf, fbx, obj, blend, hdr, exr, jpg, png, zip) and resolution (1k, 2k, 4k…) change the selection; by default the plugin picks game-friendly files near 2k.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "resolution": {
+            "type": "string"
+          }
+        },
+        "required": ["id"]
+      }
+    },
+    {
+      "name": "download",
+      "description": "Download one asset with downloadable true into the game, with its textures and companion files; zip packs are unpacked. Free. Takes the same format and resolution as asset-search__details. Returns the folder, the delivered files, entries (the model and HDRI files to load) and the credit line when the licence asks for one.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "resolution": {
+            "type": "string"
+          }
+        },
+        "required": ["id"]
+      }
+    },
+    {
+      "name": "sources",
+      "description": "The sources, what each carries, whether the user switched it on, and whether only free assets are allowed. Free.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ],
+  "skills": [
+    {
+      "name": "asset-search",
+      "text": "3D Asset Search finds ready-made 3D models, PBR materials, textures and HDRIs on many sites at once. Before making or modelling an asset by hand, call asset-search__search with a short English query and the right types. Prefer results with downloadable true, then call asset-search__download and load the returned entries file (or the textures for a material) in the game; check that it renders. Keep models small for the web: prefer glb or gltf and 1k-2k textures. Respect the licence: when a result has attributionRequired, add its credit line to the game's credits. The user chooses the sources and whether paid assets are acceptable in the plugin's Configuration; never work around a switched-off source. When freeOnly is false and the best match is paid or not downloadable, tell the user its title, price and link instead of downloading. Mention alsoSearchOn links only when nothing suitable was found."
+    }
+  ],
+  "panels": [
+    {
+      "id": "settings",
+      "title": "Configuration",
+      "file": "panel.html",
+      "placement": "settings"
+    }
+  ],
+  "settings": [],
+  "actions": [
+    {
+      "name": "settings",
+      "label": "Sources and price filter"
+    },
+    {
+      "name": "configure",
+      "label": "Change sources or price filter"
+    }
+  ]
+}

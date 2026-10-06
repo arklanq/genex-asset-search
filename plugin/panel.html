@@ -1,0 +1,367 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+/* Studio sends only its background, text and accent colours; every other tone is mixed from them. */
+:root {
+  --background: #0e0d0f;
+  --foreground: #dee0e2;
+  --accent: #3c44c4;
+  --accent-foreground: #ffffff;
+  --surface: color-mix(in oklab, var(--foreground) 3%, var(--background));
+  --field: color-mix(in oklab, var(--foreground) 12%, var(--background));
+  --hover: color-mix(in oklab, var(--foreground) 6%, var(--background));
+  --line: color-mix(in oklab, var(--foreground) 9%, var(--background));
+  --ink-3: color-mix(in oklab, var(--foreground) 66%, var(--background));
+  --red: #f08287;
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+/* The card fills Studio's frame edge to edge, so the body adds no space of its own. */
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font: 14px / 20px var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+[hidden] { display: none !important; }
+.card {
+  padding: 20px 24px 12px;
+  border-radius: 16px;
+  background: var(--surface);
+  /* Drawn inside the card: an outer ring would be clipped by the frame's edge. */
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+h2 { font-size: 15px; font-weight: 500; line-height: 22px; }
+h3 {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-block: 20px 4px;
+  color: var(--ink-3);
+  font: 12px / 16px var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.muted { color: var(--ink-3); text-wrap: pretty; }
+.small { font-size: 13px; line-height: 18px; }
+ul { list-style: none; }
+/* Each row is one label, so a click anywhere on it flips its switch. */
+.option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-inline: -12px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  cursor: pointer;
+  transition: background-color 120ms;
+}
+.option:hover { background: var(--hover); }
+.option + .option { margin-block-start: 2px; }
+.text { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 2px; }
+.name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-weight: 500; }
+.tag {
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--line);
+  color: var(--ink-3);
+  font: 11px / 18px var(--mono);
+  white-space: nowrap;
+}
+.lead { margin-block-start: 16px; padding-block-end: 4px; border-block-end: 1px solid var(--line); }
+.lead .option { margin-block-end: 12px; }
+/* The switch itself: a pill with a sliding knob, accent-filled when on. */
+.switch {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--field);
+  cursor: pointer;
+  transition: background-color 160ms ease-out;
+}
+.switch::after {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--foreground);
+  content: "";
+  transition: transform 160ms ease-out, background-color 160ms ease-out;
+}
+.switch[aria-checked="true"] { background: var(--accent); }
+.switch[aria-checked="true"]::after { background: var(--accent-foreground); transform: translateX(16px); }
+.switch:disabled { opacity: 0.5; cursor: progress; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.error { margin-block: 12px 8px; color: var(--red); font-size: 13px; line-height: 18px; overflow-wrap: anywhere; }
+.error:empty { display: none; }
+/* Until the first answer arrives the card waits off screen and a spinner shows the panel is loading. */
+.spinner {
+  position: fixed;
+  top: 48px;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  border: 2px solid var(--line);
+  border-top-color: var(--ink-3);
+  border-radius: 999px;
+  animation: spin 800ms linear infinite;
+}
+.card { opacity: 0; transform: translateY(8px); }
+body[data-ready] .card { opacity: 1; transform: none; transition: opacity 240ms ease-out, transform 240ms ease-out; }
+body[data-ready] .spinner { display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .option, .switch, .switch::after { transition: none; }
+  .spinner { animation-duration: 2400ms; }
+  .card { transform: none; }
+}
+@media (max-width: 420px) { .card { padding: 16px 16px 8px; } }
+</style>
+
+<div class="spinner" id="spinner" role="status" aria-label="Loading"></div>
+<section class="card" aria-labelledby="title">
+  <h2 id="title">Search sources</h2>
+  <p class="muted">Agents search only the sources switched on here, and only for the kind of asset you allow.</p>
+  <div class="lead">
+    <label class="option" for="free-only">
+      <span class="text">
+        <span class="name">Free assets only</span>
+        <span class="muted small" id="free-line"></span>
+      </span>
+      <button class="switch" id="free-only" role="switch" aria-checked="false"></button>
+    </label>
+  </div>
+  <h3><span>Sources</span><span id="count"></span></h3>
+  <ul id="sources"></ul>
+  <p class="error" id="error" role="alert"></p>
+</section>
+
+<script>// Include this in a prebuilt panel. No credential values or arbitrary IPC are exposed.
+const waiting = new Map();
+const contextListeners = new Set();
+let seq = 0;
+window.addEventListener("message", (event) => {
+  if (event.source !== parent) return;
+  if (event.data?.type === "studio-plugin-context-changed") {
+    for (const listener of contextListeners) {
+      try {
+        listener();
+      } catch {}
+    }
+    return;
+  }
+  if (event.data?.type !== "studio-plugin-result") return;
+  const p = waiting.get(event.data.id);
+  if (!p) return;
+  waiting.delete(event.data.id);
+  clearTimeout(p.timer);
+  event.data.error ? p.reject(new Error(event.data.error)) : p.resolve(event.data.result);
+});
+window.studioPlugin = {
+  onContextChanged(callback) {
+    contextListeners.add(callback);
+    return () => contextListeners.delete(callback);
+  },
+  call(method, name, args, options) {
+    // A long setup action may extend its local wait; host validation, confirmations and
+    // execution deadlines still apply. Timing out never means a remote job was cancelled.
+    const timeoutMs = options?.timeoutMs ?? 60000;
+    if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 1800000)
+      return Promise.reject(new Error("Invalid panel wait duration"));
+    const id = String(++seq);
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        waiting.delete(id);
+        reject(new Error("Studio request timed out. Inspect its status before retrying."));
+      }, timeoutMs);
+      waiting.set(id, { resolve, reject, timer });
+      parent.postMessage({ type: "studio-plugin-request", id, method, name, args }, "*");
+    });
+  },
+};
+window.addEventListener("pagehide", () => {
+  for (const p of waiting.values()) {
+    clearTimeout(p.timer);
+    p.reject(new Error("Panel closed"));
+  }
+  waiting.clear();
+});
+
+/** Small framework-free SDK primitives; custom panels can also use their own framework. */
+window.studioPlugin.ui = {
+  text(tag, value) {
+    const el = document.createElement(tag);
+    el.textContent = String(value ?? "Unknown");
+    return el;
+  },
+  status(label, value) {
+    const row = document.createElement("p");
+    const title = document.createElement("strong");
+    title.textContent = label + ": ";
+    row.append(title, document.createTextNode(String(value ?? "Unknown")));
+    return row;
+  },
+  error(message) {
+    const el = document.createElement("p");
+    el.setAttribute("role", "alert");
+    el.textContent = String(message);
+    return el;
+  },
+  job(job) {
+    const card = document.createElement("article");
+    card.style.cssText = "border-top:1px solid #555;padding:12px 0";
+    card.append(
+      this.text("strong", job.operation ?? job.title ?? "Asset job"),
+      this.status("Status", job.status),
+      this.status("Use", job.use?.stage ?? "Not verified"),
+      this.status("Charged credits", job.creditsCharged ?? "Not reported"),
+      this.status("Refunded credits", job.creditsRefunded ?? "Not reported"),
+    );
+    if (job.generationId) card.append(this.status("Generation", job.generationId));
+    for (const file of job.files ?? []) card.append(this.text("div", file));
+    if (job.error) card.append(this.error(job.error));
+    return card;
+  },
+};
+</script>
+<script>
+const WORDS = {
+  freeOn: "Paid listings are left out of every search.",
+  freeOff: "Paid listings show up too, with their price and a link. Agents never buy anything; they ask you.",
+  count: (on, all) => `${on} of ${all} on`,
+  direct: "Downloads into the game",
+  page: "Links to the asset page",
+  link: "Links to the site's own search",
+  pricing: { free: "Free", freemium: "Free + paid", paid: "Paid" },
+};
+const TYPE_NAMES = { hdri: "HDRIs", ui: "UI", audio: "audio", other: "other" };
+
+const $ = (id) => document.getElementById(id);
+const call = (name, args) => window.studioPlugin.call("action", name, args ?? {});
+let state;
+let generation = 0;
+
+/** Readable label colour on the accent: dark text on a light accent, white otherwise. */
+function labelOn(color) {
+  const probe = document.createElement("i");
+  probe.style.color = color;
+  document.body.append(probe);
+  const [r, g, b] = getComputedStyle(probe).color.match(/\d+(\.\d+)?/g).map(Number);
+  probe.remove();
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 150 ? "#0e0d0f" : "#ffffff";
+}
+
+async function applyTheme() {
+  try {
+    const { theme } = await window.studioPlugin.call("context");
+    const root = document.documentElement.style;
+    if (theme.background) root.setProperty("--background", theme.background);
+    if (theme.foreground) root.setProperty("--foreground", theme.foreground);
+    if (theme.accent) {
+      root.setProperty("--accent", theme.accent);
+      root.setProperty("--accent-foreground", labelOn(theme.accent));
+    }
+  } catch {}
+}
+
+function showError(error) {
+  $("error").textContent = error ? String(error.message ?? error) : "";
+}
+
+const typeName = (type) => TYPE_NAMES[type] ?? `${type}s`;
+
+/** "Models, materials, HDRIs · Downloads into the game" */
+function sourceLine(source) {
+  const types = source.types.map(typeName).join(", ");
+  const reach = source.directDownload ? WORDS.direct : source.access === "link" ? WORDS.link : WORDS.page;
+  return `${types.charAt(0).toUpperCase()}${types.slice(1)} · ${reach}`;
+}
+
+function sourceRow(source) {
+  const row = document.createElement("li");
+  row.innerHTML = `<label class="option"><span class="text"><span class="name"></span><span class="muted small"></span></span><button class="switch" role="switch"></button></label>`;
+  const label = row.firstElementChild;
+  const name = label.querySelector(".name");
+  const tag = document.createElement("span");
+  tag.className = "tag";
+  tag.textContent = WORDS.pricing[source.pricing] ?? source.pricing;
+  name.append(source.name, tag);
+  label.querySelector(".small").textContent = sourceLine(source);
+  label.title = source.description;
+  const toggle = label.querySelector(".switch");
+  toggle.id = `source-${source.id}`;
+  label.htmlFor = toggle.id;
+  toggle.setAttribute("aria-checked", String(source.enabled));
+  toggle.onclick = () => flip(toggle, { source: source.id, enabled: !source.enabled });
+  return row;
+}
+
+function render(next) {
+  state = next;
+  $("free-only").setAttribute("aria-checked", String(state.freeOnly));
+  $("free-line").textContent = state.freeOnly ? WORDS.freeOn : WORDS.freeOff;
+  $("count").textContent = WORDS.count(state.sources.filter((s) => s.enabled).length, state.sources.length);
+  $("sources").replaceChildren(...state.sources.map(sourceRow));
+}
+
+/** Show the change at once, save it, and put the switch back if saving fails. */
+async function flip(toggle, change) {
+  if (toggle.disabled) return;
+  const before = state;
+  const mine = ++generation;
+  const optimistic = structuredClone(state);
+  if ("freeOnly" in change) optimistic.freeOnly = change.freeOnly;
+  else optimistic.sources.find((s) => s.id === change.source).enabled = change.enabled;
+  render(optimistic);
+  const again = document.getElementById(toggle.id);
+  again.disabled = true;
+  again.focus();
+  showError("");
+  try {
+    const saved = await call("configure", change);
+    if (mine === generation) render(saved);
+  } catch (error) {
+    if (mine === generation) render(before);
+    showError(error);
+  } finally {
+    document.getElementById(toggle.id).disabled = false;
+  }
+}
+
+// Ignore answers that arrive after a newer refresh started.
+async function refresh() {
+  const mine = ++generation;
+  try {
+    const next = await call("settings");
+    if (mine === generation) render(next);
+  } catch (error) {
+    if (mine === generation) showError(error);
+  } finally {
+    if (mine === generation) reveal();
+  }
+}
+
+/** Swap the spinner for the card once, after the first answer or failure. */
+function reveal() {
+  document.body.dataset.ready = "";
+  $("spinner").removeAttribute("role");
+}
+
+$("free-only").onclick = () => state && flip($("free-only"), { freeOnly: !state.freeOnly });
+
+const stop = window.studioPlugin.onContextChanged(() => {
+  applyTheme();
+  refresh();
+});
+window.addEventListener("pagehide", stop);
+applyTheme();
+refresh();
+</script>
