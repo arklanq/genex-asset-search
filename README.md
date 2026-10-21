@@ -20,6 +20,12 @@ In Genex, open **Plugins → Add → Install from GitHub** and paste `https://gi
 - In **Configuration** you choose the sources and whether paid assets are shown. The plugin never buys anything.
 - Downloads are limited to 512 MiB, or 1 GiB after unpacking.
 
+## Privacy
+
+- Searches go to `3d.shep.bot`, the public [3D Asset Server](https://github.com/arielshad/3d-asset-server) run by a third party. It receives your search terms and the sources you switched on.
+- Files are downloaded straight from the source sites, such as Poly Haven or ambientCG.
+- See the [3D Asset Server privacy page](https://3d.shep.bot/privacy).
+
 ## Develop
 
 ```bash
