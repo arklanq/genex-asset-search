@@ -10,10 +10,10 @@ In Genex, open **Plugins → Add → Install from GitHub** and paste `https://gi
 
 | Tool | What it does |
 | --- | --- |
-| `asset-search__search` | Searches the enabled sources. Free. |
-| `asset-search__details` | Shows the licence, credit line and files for an asset. Free. |
-| `asset-search__download` | Downloads an asset into `assets/asset-search/`. Free. |
-| `asset-search__sources` | Lists the sources and your settings. Free. |
+| `arklanq-asset-search__search` | Searches the enabled sources. Free. |
+| `arklanq-asset-search__details` | Shows the licence, credit line and files for an asset. Free. |
+| `arklanq-asset-search__download` | Downloads an asset into `assets/arklanq-asset-search/`. Free. |
+| `arklanq-asset-search__sources` | Lists the sources and your settings. Free. |
 
 ## Notes
 
@@ -34,4 +34,4 @@ npm run plugin:doctor -- /path/to/genex-asset-search/plugin
 
 ## Release
 
-Bump `version` in `plugin/plugin.json` and `package.json`, commit, then push a matching tag, such as `v0.2.0`. The workflow publishes a GitHub release with `asset-search-<version>.zip`.
+Bump `version` in `plugin/plugin.json` and `package.json`, commit, then push a matching tag, such as `v0.2.0`. The workflow publishes a GitHub release with `arklanq-asset-search-<version>.zip`.

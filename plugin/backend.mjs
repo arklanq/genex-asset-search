@@ -61,13 +61,13 @@ const MESSAGE = {
   ProjectRequired: "Open a game first.",
   QueryRequired: "search needs a query, for example \"low poly tree\".",
   BadType: `types must be some of ${ASSET_TYPES.join(", ")}.`,
-  BadId: "id must be an asset id from asset-search__search, such as polyhaven:wooden_crate_01.",
+  BadId: "id must be an asset id from arklanq-asset-search__search, such as polyhaven:wooden_crate_01.",
   BadProvider: "Unknown source.",
   NoSources: "Every source is switched off. Open Plugins → 3D Asset Search → Configuration and switch one on.",
   SourceOff: (name) => `${name} is switched off in Configuration; ask the user before using it.`,
   NotFound: "No asset with that id.",
   NoFiles: (url) => `This asset has no direct download. Send the user to its page: ${url}`,
-  NoMatch: "No files match that format and resolution. Call asset-search__details to see what is available.",
+  NoMatch: "No files match that format and resolution. Call arklanq-asset-search__details to see what is available.",
   NeedsLogin: (url) => `This file needs a login or payment on the source site: ${url}`,
   BadHost: (host) => `${host} is not a host this plugin downloads from.`,
   BadPath: (name) => `Refused file path ${name}.`,
@@ -460,7 +460,7 @@ async function download(args, ctx) {
     const entries = delivered.filter((f) => rank(f) >= 0).sort((a, b) => rank(a) - rank(b));
     // A game with a build step gets its assets under public/, so the folder comes from what Studio delivered.
     const first = delivered[0];
-    const folder = first ? first.slice(0, first.indexOf(jobId) + jobId.length) : `assets/asset-search/${jobId}`;
+    const folder = first ? first.slice(0, first.indexOf(jobId) + jobId.length) : `assets/arklanq-asset-search/${jobId}`;
     return {
       id: asset.id,
       title: asset.title,

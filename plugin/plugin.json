@@ -1,6 +1,6 @@
 {
   "apiVersion": 3,
-  "id": "asset-search",
+  "id": "arklanq-asset-search",
   "version": "0.1.1",
   "name": "3D Asset Search",
   "publisher": "Arek Nurzyński",
@@ -57,13 +57,13 @@
     },
     {
       "name": "details",
-      "description": "Licence, credit line, formats and the exact files asset-search__download would bring in for an asset id, with their sizes. Free. format (glb, gltf, fbx, obj, blend, hdr, exr, jpg, png, zip) and resolution (1k, 2k, 4k…) change the selection; by default the plugin picks game-friendly files near 2k.",
+      "description": "Licence, credit line, formats and the exact files arklanq-asset-search__download would bring in for an asset id, with their sizes. Free. format (glb, gltf, fbx, obj, blend, hdr, exr, jpg, png, zip) and resolution (1k, 2k, 4k…) change the selection; by default the plugin picks game-friendly files near 2k.",
       "parameters": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
-            "description": "An asset id from asset-search__search, such as polyhaven:wooden_crate_01."
+            "description": "An asset id from arklanq-asset-search__search, such as polyhaven:wooden_crate_01."
           },
           "format": {
             "type": "string",
@@ -79,13 +79,13 @@
     },
     {
       "name": "download",
-      "description": "Download one asset with downloadable true into the game, with its textures and companion files; zip packs are unpacked. Free. Takes the same format and resolution as asset-search__details. Returns the folder, the delivered files as paths in the game, entries (the model and HDRI files to load) and the credit line when the licence asks for one.",
+      "description": "Download one asset with downloadable true into the game, with its textures and companion files; zip packs are unpacked. Free. Takes the same format and resolution as arklanq-asset-search__details. Returns the folder, the delivered files as paths in the game, entries (the model and HDRI files to load) and the credit line when the licence asks for one.",
       "parameters": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
-            "description": "An asset id from asset-search__search, such as polyhaven:wooden_crate_01."
+            "description": "An asset id from arklanq-asset-search__search, such as polyhaven:wooden_crate_01."
           },
           "format": {
             "type": "string",
@@ -111,7 +111,7 @@
   "skills": [
     {
       "name": "asset-search",
-      "text": "3D Asset Search finds ready-made 3D models, PBR materials, textures and HDRIs on many sites at once. Before making or modelling an asset by hand, call asset-search__search with a short English query and the right types. Prefer results with downloadable true, then call asset-search__download and load the returned entries file (or the textures for a material) in the game; check that it renders. Keep models small for the web: prefer glb or gltf and 1k-2k textures. Respect the licence: when a result has attributionRequired, add its credit line to the game's credits. The user chooses the sources and whether paid assets are acceptable in the plugin's Configuration; never work around a switched-off source. When freeOnly is false and the best match is paid or not downloadable, tell the user its title, price and link instead of downloading. Mention alsoSearchOn links only when nothing suitable was found."
+      "text": "3D Asset Search finds ready-made 3D models, PBR materials, textures and HDRIs on many sites at once. Before making or modelling an asset by hand, call arklanq-asset-search__search with a short English query and the right types. Prefer results with downloadable true, then call arklanq-asset-search__download and load the returned entries file (or the textures for a material) in the game; check that it renders. Keep models small for the web: prefer glb or gltf and 1k-2k textures. Respect the licence: when a result has attributionRequired, add its credit line to the game's credits. The user chooses the sources and whether paid assets are acceptable in the plugin's Configuration; never work around a switched-off source. When freeOnly is false and the best match is paid or not downloadable, tell the user its title, price and link instead of downloading. Mention alsoSearchOn links only when nothing suitable was found."
     }
   ],
   "panels": [
