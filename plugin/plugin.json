@@ -7,7 +7,7 @@
   "description": "Search 17 sites for 3D models, materials, textures and HDRIs at once and bring free ones into the game, through 3D Asset Server.",
   "icon": "icon.svg",
   "setup": [
-    "Open the plugin's Configuration to choose the sources it searches and whether paid assets are shown."
+    "Open the plugin's Configuration to choose the sources it searches."
   ],
   "backend": "backend.mjs",
   "capabilities": ["network", "project.write"],
@@ -34,7 +34,7 @@
   "tools": [
     {
       "name": "search",
-      "description": "Search the sources the user switched on for 3D assets. Free. types narrows the kind: comma-separated model, texture, material, hdri, sprite, ui, audio, font, pack, other. Results are ranked and carry id, licence, price, formats and whether the plugin can download them (downloadable). freeOnly says whether the user allows only free assets. alsoSearchOn lists sites that block automated search, as links to their own search.",
+      "description": "Search the sources the user switched on for free 3D assets; paid listings are never returned. Free. types narrows the kind: comma-separated model, texture, material, hdri, sprite, ui, audio, font, pack, other. Results are ranked and carry id, licence, formats and whether the plugin can download them (downloadable). alsoSearchOn lists sites that block automated search, as links to their own search.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -104,7 +104,7 @@
     },
     {
       "name": "sources",
-      "description": "The sources, what each carries, whether the user switched it on, and whether only free assets are allowed. Free.",
+      "description": "The sources, what each carries and whether the user switched it on. Free.",
       "parameters": {
         "type": "object",
         "properties": {}
@@ -114,7 +114,7 @@
   "skills": [
     {
       "name": "asset-search",
-      "text": "3D Asset Search finds ready-made 3D models, PBR materials, textures and HDRIs on many sites at once. Before making or modelling an asset by hand, call arklanq-asset-search__search with a short English query and the right types. Prefer results with downloadable true, then call arklanq-asset-search__download and load the returned entries file (or the textures for a material) in the game; check that it renders. Keep models small for the web: prefer glb or gltf and 1k-2k textures. Respect the licence: when a result has attributionRequired, add its credit line to the game's credits. The user chooses the sources and whether paid assets are acceptable in the plugin's Configuration; never work around a switched-off source. When freeOnly is false and the best match is paid or not downloadable, tell the user its title, price and link instead of downloading. Mention alsoSearchOn links only when nothing suitable was found."
+      "text": "3D Asset Search finds ready-made 3D models, PBR materials, textures and HDRIs on many sites at once. Before making or modelling an asset by hand, call arklanq-asset-search__search with a short English query and the right types. Prefer results with downloadable true, then call arklanq-asset-search__download and load the returned entries file (or the textures for a material) in the game; check that it renders. Keep models small for the web: prefer glb or gltf and 1k-2k textures. Respect the licence: when a result has attributionRequired, add its credit line to the game's credits. The plugin brings in free assets only and never buys anything. The user chooses the sources in the plugin's Configuration; never work around a switched-off source. When the best match is not downloadable, tell the user its title and link instead of downloading. Mention alsoSearchOn links only when nothing suitable was found."
     }
   ],
   "panels": [
@@ -129,11 +129,11 @@
   "actions": [
     {
       "name": "settings",
-      "label": "Sources and price filter"
+      "label": "Sources"
     },
     {
       "name": "configure",
-      "label": "Change sources or price filter"
+      "label": "Change sources"
     }
   ]
 }

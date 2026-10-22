@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { cp, mkdtemp, mkdir, readdir, readFile } from "node:fs/promises";
+import { cp, mkdtemp, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
@@ -22,6 +22,8 @@ const CRATE = {
   price: { free: true },
   downloadable: true,
 };
+/** A paid listing, as a freemium source returns one when the server's free filter misses it. */
+const PAID = { ...CRATE, id: "polyhaven:paid_crate", title: "Paid crate", price: { free: false, amount: 25, currency: "USD" } };
 const GLTF = {
   url: "https://dl.polyhaven.org/crate/crate_2k.gltf",
   filename: "crate_2k.gltf",
@@ -107,7 +109,7 @@ function fakeServer({ asset = CRATE, files = [GLTF], assetFiles = files, blobs =
       if (url.pathname === "/v1/providers") return Response.json({ providers: PROVIDERS });
       if (url.pathname === "/v1/search")
         return Response.json({
-          results: [{ ...CRATE, description: "x".repeat(500), tags: ["a"] }],
+          results: [{ ...CRATE, description: "x".repeat(500), tags: ["a"] }, PAID],
           providers: [
             { provider: "polyhaven", status: "ok", count: 1 },
             { provider: "fab", status: "link", searchUrl: "https://www.fab.com/search?q=crate" },
@@ -155,24 +157,37 @@ test("search asks only the switched-on sources, with the free filter, and splits
   assert.equal(answer.results[0].id, "polyhaven:crate");
   assert.ok(answer.results[0].description.length <= 200);
   assert.equal(answer.results[0].tags, undefined);
+  assert.deepEqual(answer.results.map((r) => r.id), ["polyhaven:crate"], "a paid listing is left out");
+  assert.equal("free" in answer.results[0] || "price" in answer.results[0], false);
+  assert.equal("freeOnly" in answer, false);
   assert.deepEqual(answer.alsoSearchOn, [{ source: "fab", url: "https://www.fab.com/search?q=crate" }]);
   assert.deepEqual(answer.failed, [{ source: "kenney", status: "timeout", error: "took too long" }]);
   assert.deepEqual(answer.switchedOff, ["kenney"]);
 });
 
-test("allowing paid assets drops the free filter, and the choice survives a restart", async () => {
+test("search asks for free assets only, even when an older version saved a choice that allowed paid ones", async () => {
   const requests = fakeServer();
+  await writeFile(path.join(root, "config.json"), JSON.stringify({ disabled: [], freeOnly: false }));
   await plugin.action("configure", { freeOnly: false }, ctx);
-  const fresh = await activate(/** @type {any} */ ({}));
-  await fresh.tool("search", { query: "crate" }, ctx);
-  assert.equal(requests.find((u) => u.pathname === "/v1/search").searchParams.has("free"), false);
-  assert.equal((await fresh.action("settings", {}, ctx)).freeOnly, false);
+  await plugin.tool("search", { query: "crate" }, ctx);
+  assert.equal(requests.find((u) => u.pathname === "/v1/search").searchParams.get("free"), "true");
+  assert.equal("freeOnly" in (await plugin.action("settings", {}, ctx)), false);
+});
+
+test("details and download refuse a paid asset before fetching any file", async () => {
+  const requests = fakeServer({ asset: PAID });
+  for (const tool of ["details", "download"]) {
+    await assert.rejects(plugin.tool(tool, { id: PAID.id }, ctx), /only free assets/);
+  }
+  assert.equal(requests.some((u) => u.pathname.endsWith("/files") || u.hostname !== "3d.shep.bot"), false);
+  assert.deepEqual(await readdir(game), []);
 });
 
 test("settings lists every source with its switch, and configure refuses unknown sources", async () => {
   fakeServer();
   const settings = await plugin.action("configure", { source: "fab", enabled: false }, ctx);
-  assert.equal(settings.freeOnly, true);
+  assert.equal("freeOnly" in settings, false);
+  assert.equal(settings.sources.some((s) => "pricing" in s), false);
   assert.deepEqual(
     settings.sources.map((s) => [s.id, s.enabled]),
     [["polyhaven", true], ["kenney", true], ["fab", false]],
@@ -300,10 +315,8 @@ test("quick switches in the panel all persist", async () => {
   await Promise.all([
     plugin.action("configure", { source: "kenney", enabled: false }, ctx),
     plugin.action("configure", { source: "fab", enabled: false }, ctx),
-    plugin.action("configure", { freeOnly: false }, ctx),
   ]);
   const settings = await plugin.action("settings", {}, ctx);
-  assert.equal(settings.freeOnly, false);
   assert.deepEqual(settings.sources.filter((s) => !s.enabled).map((s) => s.id), ["kenney", "fab"]);
 });
 

@@ -36,8 +36,8 @@ const DESCRIPTION_CHARS = 200;
 const LISTED_FILES = 40;
 const CONFIG_FILE = "config.json";
 const USER_AGENT = "genex-asset-search/0.1";
-/** Defaults: every source on, only free assets. */
-const DEFAULT_CONFIG = { disabled: [], freeOnly: true };
+/** Defaults: every source on. */
+const DEFAULT_CONFIG = { disabled: [] };
 
 const ASSET_TYPES = ["model", "texture", "material", "hdri", "sprite", "ui", "audio", "font", "pack", "other"];
 const ASSET_ID = /^[a-z0-9]{1,40}:[^\s?#]{1,200}$/;
@@ -68,6 +68,7 @@ const MESSAGE = {
   NotFound: "No asset with that id.",
   NoFiles: (url) => `This asset has no direct download. Send the user to its page: ${url}`,
   NoMatch: "No files match that format and resolution. Call arklanq-asset-search__details to see what is available.",
+  NotFree: (url) => `This plugin brings in only free assets, and this one is paid: ${url}`,
   NeedsLogin: (url) => `This file needs a login or payment on the source site: ${url}`,
   BadHost: (host) => `${host} is not a host this plugin downloads from.`,
   BadPath: (name) => `Refused file path ${name}.`,
@@ -83,7 +84,7 @@ const MESSAGE = {
 };
 
 /** @typedef {import('./plugin-sdk/index.d.ts').PluginContext} Context */
-/** @typedef {{ disabled: string[], freeOnly: boolean }} Config */
+/** @typedef {{ disabled: string[] }} Config */
 
 /**
  * Call the asset server and return its JSON, or throw its own reason.
@@ -125,7 +126,6 @@ async function readConfig(ctx) {
     const saved = JSON.parse(await readFile(await configPath(ctx), "utf8"));
     return {
       disabled: Array.isArray(saved.disabled) ? saved.disabled.filter((id) => typeof id === "string") : [],
-      freeOnly: typeof saved.freeOnly === "boolean" ? saved.freeOnly : DEFAULT_CONFIG.freeOnly,
     };
   } catch {
     return structuredClone(DEFAULT_CONFIG);
@@ -174,8 +174,6 @@ const brief = (a) => ({
   title: a.title,
   type: a.type,
   source: a.provider,
-  free: a.price?.free,
-  price: a.price?.free === false && a.price.amount !== undefined ? `${a.price.amount} ${a.price.currency ?? ""}`.trim() : undefined,
   license: a.license?.name,
   commercialUse: a.license?.commercialUse,
   attributionRequired: a.license?.attributionRequired,
@@ -189,6 +187,9 @@ const brief = (a) => ({
   description: clip(a.description, DESCRIPTION_CHARS),
   url: a.url,
 });
+
+/** Whether a listing is for sale; a listing without a price counts as free, as the server's free filter treats it. @param {any} a */
+const isPaid = (a) => a.price?.free === false;
 
 /** @param {unknown} value */
 function parseTypes(value) {
@@ -209,7 +210,7 @@ function assetId(value) {
 const assetRoute = (id) => `/v1/assets/${encodeURIComponent(id).replace(/%3A/g, ":")}`;
 
 /**
- * Search the switched-on sources with the user's free/paid choice.
+ * Search the switched-on sources for free assets.
  * @param {Record<string, any>} args
  * @param {Context} ctx
  */
@@ -223,14 +224,14 @@ async function search(args, ctx) {
   const limit = Math.min(Math.max(Math.trunc(Number(args.limit) || DEFAULT_LIMIT), 1), MAX_LIMIT);
   const params = new URLSearchParams({ q: query, limit: String(limit), providers: sources.map((p) => p.id).join(",") });
   if (types.length) params.set("type", types.join(","));
-  if (config.freeOnly) params.set("free", "true");
+  params.set("free", "true");
   if (Number(args.offset) > 0) params.set("offset", String(Math.trunc(Number(args.offset))));
   const answer = await server(`/v1/search?${params}`, ctx.signal);
   const report = /** @type {any[]} */ (answer.providers ?? []);
   return {
     query,
-    freeOnly: config.freeOnly,
-    results: (answer.results ?? []).map(brief),
+    // The server filters by price already; a freemium source's listing it misses is still left out.
+    results: (answer.results ?? []).filter((a) => !isPaid(a)).map(brief),
     // Sites that block automated search come back only as a link to their own search.
     alsoSearchOn: report.filter((r) => r.status === "link" && r.searchUrl).map((r) => ({ source: r.provider, url: r.searchUrl })),
     failed: report
@@ -241,7 +242,7 @@ async function search(args, ctx) {
 }
 
 /**
- * The asset and the files a download would fetch, refusing a source the user switched off.
+ * The asset and the files a download would fetch, refusing a source the user switched off and a paid asset.
  * @param {Record<string, any>} args
  * @param {Context} ctx
  */
@@ -259,6 +260,7 @@ async function lookup(args, ctx) {
   const asset = await server(assetRoute(id), ctx.signal).catch((error) => {
     throw String(error.message).includes(" 404:") ? new Error(MESSAGE.NotFound) : error;
   });
+  if (isPaid(asset)) throw new Error(MESSAGE.NotFree(asset.url));
   const { files, totalBytes } = await server(`${assetRoute(id)}/files?${selection}`, ctx.signal);
   return { asset, files: /** @type {any[]} */ (files ?? []), totalBytes };
 }
@@ -477,19 +479,17 @@ async function download(args, ctx) {
 }
 
 /**
- * The source list with each source's switch, and the free/paid choice, for the panel.
+ * The source list with each source's switch, for the panel.
  * @param {Context} ctx
  */
 async function settings(ctx) {
   const [config, list] = await Promise.all([readConfig(ctx), providers(ctx.signal)]);
   return {
-    freeOnly: config.freeOnly,
     sources: list.map((p) => ({
       id: p.id,
       name: p.name,
       description: p.description,
       types: p.assetTypes,
-      pricing: p.pricing,
       access: p.access,
       directDownload: p.supportsDownload,
       enabled: !config.disabled.includes(p.id),
@@ -511,13 +511,8 @@ const TOOLS = {
 /** @type {Record<string, (args: Record<string, any>, ctx: Context) => Promise<unknown>>} */
 const ACTIONS = {
   settings: (_args, ctx) => settings(ctx),
-  // One change per call: `{source, enabled}` flips a source, `{freeOnly}` flips the price filter.
+  // One change per call: `{source, enabled}` flips a source.
   async configure(args, ctx) {
-    if (typeof args.freeOnly === "boolean") {
-      await updateConfig(ctx, (config) => {
-        config.freeOnly = args.freeOnly;
-      });
-    }
     if (typeof args.source === "string" && typeof args.enabled === "boolean") {
       if (!(await providers(ctx.signal)).some((p) => p.id === args.source)) throw new Error(MESSAGE.BadProvider);
       await updateConfig(ctx, (config) => {
