@@ -75,6 +75,7 @@ const MESSAGE = {
   NotFree: (url) => `This plugin brings in only free assets, and this one is paid: ${url}`,
   NeedsLogin: (url) => `This file needs a login or payment on the source site: ${url}`,
   BadHost: (host) => `${host} is not a host this plugin downloads from.`,
+  OutsideHost: (host) => `Its files come from ${host}, which this plugin does not download from. Send the user to its page instead.`,
   BadPath: (name) => `Refused file path ${name}.`,
   TooLarge: "The download is larger than 512 MiB. Pick a lower resolution or a smaller format.",
   TooLargeUnpacked: "The archive unpacks to more than 1 GiB.",
@@ -276,8 +277,12 @@ async function lookup(args, ctx) {
  */
 async function details(args, ctx) {
   const { asset, files, totalBytes } = await lookup(args, ctx);
+  // The server marks an asset downloadable by its own list of sources; a file host this plugin does not know would fail later.
+  const refused = outsideHost(files);
   return {
     ...brief(asset),
+    downloadable: asset.downloadable && !refused,
+    notDownloadable: refused ? MESSAGE.OutsideHost(refused) : undefined,
     description: clip(asset.description, DESCRIPTION_CHARS * 4),
     tags: asset.tags,
     attribution: attribution(asset),
@@ -293,12 +298,29 @@ async function details(args, ctx) {
   };
 }
 
+/** @param {string} hostname */
+const isFileHost = (hostname) => FILE_HOSTS.some((h) => hostname === h || hostname.endsWith(`.${h}`));
+
 /** @param {string} url */
 function allowedUrl(url) {
   const target = new URL(url);
-  const allowed = FILE_HOSTS.some((h) => target.hostname === h || target.hostname.endsWith(`.${h}`));
-  if (target.protocol !== "https:" || !allowed) throw new Error(MESSAGE.BadHost(target.hostname));
+  if (target.protocol !== "https:" || !isFileHost(target.hostname)) throw new Error(MESSAGE.BadHost(target.hostname));
   return target;
+}
+
+/**
+ * The first host among the files and their companions that a download would refuse, if any.
+ * @param {any[]} files
+ */
+function outsideHost(files) {
+  for (const url of files.flatMap((f) => [f.url, ...(f.includes ?? []).map((/** @type {any} */ i) => i.url)])) {
+    try {
+      allowedUrl(url);
+    } catch {
+      return URL.canParse(url) ? new URL(url).hostname : String(url);
+    }
+  }
+  return undefined;
 }
 
 /**

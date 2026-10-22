@@ -320,6 +320,20 @@ test("download takes files from the hosts of every source that offers downloads"
   }
 });
 
+test("details marks an asset not downloadable when a file comes from a host the plugin does not download from", async () => {
+  const outside = { ...GLTF, includes: [{ path: "crate.bin", url: "https://cdn.unknown.example/crate.bin" }] };
+  fakeServer({ files: [outside] });
+  const answer = await plugin.tool("details", { id: "polyhaven:crate" }, ctx);
+  assert.equal(answer.downloadable, false);
+  assert.match(answer.notDownloadable, /cdn\.unknown\.example/);
+  assert.equal(answer.url, CRATE.url);
+
+  fakeServer();
+  const allowed = await plugin.tool("details", { id: "polyhaven:crate" }, ctx);
+  assert.equal(allowed.downloadable, true);
+  assert.equal(allowed.notDownloadable, undefined);
+});
+
 test("an answer from the asset server that is not JSON is reported as the server's", async () => {
   globalThis.fetch = async () => new Response("<html>Gateway</html>", { headers: { "content-type": "text/html" } });
   await assert.rejects(plugin.tool("details", { id: "polyhaven:crate" }, ctx), /^Error: 3D Asset Server 200/);
