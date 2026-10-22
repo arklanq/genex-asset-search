@@ -62,6 +62,8 @@ ul { list-style: none; }
 .option + .option { margin-block-start: 2px; }
 .text { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 2px; }
 .name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-weight: 500; }
+.lead { margin-block-start: 16px; padding-block-end: 4px; border-block-end: 1px solid var(--line); }
+.lead .option { margin-block-end: 12px; }
 /* The switch itself: a pill with a sliding knob, accent-filled when on. */
 .switch {
   position: relative;
@@ -120,6 +122,16 @@ body[data-ready] .spinner { display: none; }
 <section class="card" aria-labelledby="title">
   <h2 id="title">Search sources</h2>
   <p class="muted">Agents search only the sources switched on here, and bring in free assets only.</p>
+  <div class="lead">
+    <label class="option" for="links">
+      <span class="text">
+        <span class="name" id="links-title"></span>
+        <span class="muted small" id="links-line"></span>
+      </span>
+      <!-- The visible title follows the choice; the switch keeps one name so "on" always means links are allowed. -->
+      <button class="switch" id="links" role="switch" aria-checked="false" aria-label="Include links to asset pages"></button>
+    </label>
+  </div>
   <h3><span>Sources</span><span id="count"></span></h3>
   <ul id="sources"></ul>
   <p class="error" id="error" role="alert"></p>
@@ -215,6 +227,10 @@ window.studioPlugin.ui = {
 </script>
 <script>
 const WORDS = {
+  linksOffTitle: "Downloadable assets only",
+  linksOnTitle: "Downloadable assets and links",
+  linksOff: "Agents bring every asset straight into the game. Sources that only link to their pages are hidden.",
+  linksOn: "Sources that only link to their pages show up too. For those, agents give you the link instead.",
   count: (on, all) => `${on} of ${all} on`,
   direct: "Downloads into the game",
   page: "Links to the asset page",
@@ -283,6 +299,9 @@ function sourceRow(source) {
 
 function render(next) {
   state = next;
+  $("links").setAttribute("aria-checked", String(state.allowLinks));
+  $("links-title").textContent = state.allowLinks ? WORDS.linksOnTitle : WORDS.linksOffTitle;
+  $("links-line").textContent = state.allowLinks ? WORDS.linksOn : WORDS.linksOff;
   $("count").textContent = WORDS.count(state.sources.filter((s) => s.enabled).length, state.sources.length);
   // Rebuilding the rows drops keyboard focus, so hand it to the same source's new switch.
   const focused = document.activeElement?.id;
@@ -296,7 +315,9 @@ async function flip(toggle, change) {
   const before = state;
   const mine = ++generation;
   const optimistic = structuredClone(state);
-  optimistic.sources.find((s) => s.id === change.source).enabled = change.enabled;
+  // The sources that only link appear or go once the answer arrives; only the switch moves at once.
+  if ("allowLinks" in change) optimistic.allowLinks = change.allowLinks;
+  else optimistic.sources.find((s) => s.id === change.source).enabled = change.enabled;
   render(optimistic);
   document.getElementById(toggle.id).disabled = true;
   showError("");
@@ -329,6 +350,8 @@ function reveal() {
   document.body.dataset.ready = "";
   $("spinner").removeAttribute("role");
 }
+
+$("links").onclick = () => state && flip($("links"), { allowLinks: !state.allowLinks });
 
 const stop = window.studioPlugin.onContextChanged(() => {
   applyTheme();
