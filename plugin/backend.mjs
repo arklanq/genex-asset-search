@@ -18,6 +18,10 @@ const FILE_HOSTS = [
   "kenney.nl",
   "texturecan.com",
   "hdrmaps.com",
+  "polyfork.dev",
+  "grab3d.com",
+  "upload.wikimedia.org",
+  "opengameart.org",
 ];
 /** One search fans out to every source, each with its own 12 s limit on the server. */
 const SEARCH_TIMEOUT_MS = 60_000;

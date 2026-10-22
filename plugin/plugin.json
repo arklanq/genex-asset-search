@@ -28,7 +28,15 @@
       "texturecan.com",
       "*.texturecan.com",
       "hdrmaps.com",
-      "*.hdrmaps.com"
+      "*.hdrmaps.com",
+      "polyfork.dev",
+      "*.polyfork.dev",
+      "grab3d.com",
+      "*.grab3d.com",
+      "upload.wikimedia.org",
+      "*.upload.wikimedia.org",
+      "opengameart.org",
+      "*.opengameart.org"
     ]
   },
   "tools": [

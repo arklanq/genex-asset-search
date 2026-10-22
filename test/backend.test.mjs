@@ -305,6 +305,21 @@ test("details reports the files a download would fetch for the chosen format", a
   ]);
 });
 
+test("download takes files from the hosts of every source that offers downloads", async () => {
+  const urls = [
+    "https://polyfork.dev/files/chest.glb",
+    "https://grab3d.com/download/chest.glb",
+    "https://upload.wikimedia.org/wikipedia/commons/a/ab/Chest.stl",
+    "https://opengameart.org/sites/default/files/chest.glb",
+  ];
+  for (const url of urls) {
+    const filename = url.split("/").at(-1);
+    fakeServer({ files: [{ url, filename, format: "glb" }], blobs: { [url]: "model" } });
+    const result = await plugin.tool("download", { id: "polyhaven:crate" }, ctx);
+    assert.deepEqual(result.files.map((f) => path.basename(f)), [filename], url);
+  }
+});
+
 test("an answer from the asset server that is not JSON is reported as the server's", async () => {
   globalThis.fetch = async () => new Response("<html>Gateway</html>", { headers: { "content-type": "text/html" } });
   await assert.rejects(plugin.tool("details", { id: "polyhaven:crate" }, ctx), /^Error: 3D Asset Server 200/);
