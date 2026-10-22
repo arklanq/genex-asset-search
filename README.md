@@ -1,6 +1,6 @@
 # 3D Asset Search for Genex
 
-A [Genex](https://github.com/genex-games/genex-desktop) plugin that searches 17 sites for free 3D models, materials, textures and HDRIs and brings them into the game. Search runs through [3D Asset Server](https://github.com/arielshad/3d-asset-server).
+A [Genex](https://github.com/genex-games/genex-desktop) plugin that searches many sites for free 3D models, materials, textures and HDRIs and brings them into the game. Search runs through [3D Asset Server](https://github.com/arielshad/3d-asset-server).
 
 ## Install
 
@@ -18,7 +18,8 @@ In Genex, open **Plugins → Add → Install from GitHub** and paste `https://gi
 ## Notes
 
 - The plugin finds and downloads free assets only, and never buys anything.
-- In **Configuration** you choose the sources it searches.
+- By default it offers only sources it downloads from, so every result can go straight into the game.
+- In **Configuration** you choose the sources it searches. You can also allow sources that only link to their pages; for those, agents give you the link.
 - Downloads are limited to 512 MiB, or 1 GiB after unpacking.
 
 ## Privacy
