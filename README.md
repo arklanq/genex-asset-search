@@ -17,7 +17,8 @@ In Genex, open **Plugins → Add → Install from GitHub** and paste `https://gi
 
 ## Notes
 
-- In **Configuration** you choose the sources and whether paid assets are shown. The plugin never buys anything.
+- The plugin finds and downloads free assets only, and never buys anything.
+- In **Configuration** you choose the sources it searches.
 - Downloads are limited to 512 MiB, or 1 GiB after unpacking.
 
 ## Privacy
