@@ -24,6 +24,8 @@ const SOURCE_HOSTS = {
   wikimediacommons: ["upload.wikimedia.org"],
   opengameart: ["opengameart.org"],
 };
+/** Sources the plugin never uses, whatever the server says: CGTrader refuses every automated search. */
+const BLOCKED_SOURCES = ["cgtrader"];
 /** Hosts the plugin downloads files from: the asset server itself and every source's. */
 const FILE_HOSTS = ["3d.shep.bot", ...Object.values(SOURCE_HOSTS).flat()];
 /** One search fans out to every source, each with its own 12 s limit on the server. */
@@ -125,8 +127,8 @@ async function providers(signal) {
 
 /** Whether the plugin downloads from a source. @param {any} p */
 const isDownloadSource = (p) => Object.hasOwn(SOURCE_HOSTS, p.id);
-/** Whether a source only links to its pages; one that offers downloads from hosts the plugin has not checked is neither. @param {any} p */
-const isLinkSource = (p) => !isDownloadSource(p) && !p.supportsDownload;
+/** Whether a source only links to its pages; a blocked one, or one offering downloads from unchecked hosts, is neither. @param {any} p */
+const isLinkSource = (p) => !isDownloadSource(p) && !p.supportsDownload && !BLOCKED_SOURCES.includes(p.id);
 /** Whether the user can ever use a source, with or without links allowed. @param {any} p */
 const isSupported = (p) => isDownloadSource(p) || isLinkSource(p);
 

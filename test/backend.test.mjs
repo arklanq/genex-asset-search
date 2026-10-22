@@ -12,6 +12,8 @@ const PROVIDERS = [
   { id: "fab", name: "Fab", assetTypes: ["model"], access: "link", pricing: "freemium", supportsDownload: false },
   // Offers downloads from hosts the plugin has not checked, so it is never offered.
   { id: "mystery", name: "Mystery", assetTypes: ["model"], access: "api", pricing: "free", supportsDownload: true },
+  // On the plugin's blocklist: it refuses every automated search.
+  { id: "cgtrader", name: "CGTrader", assetTypes: ["model"], access: "scrape", pricing: "freemium", supportsDownload: false },
 ];
 const CRATE = {
   id: "polyhaven:crate",
@@ -182,6 +184,16 @@ test("allowing links adds link-only sources and listings, survives a restart, an
   const settings = await fresh.action("settings", {}, ctx);
   assert.equal(settings.allowLinks, true);
   assert.deepEqual(settings.sources.map((s) => s.id), ["polyhaven", "kenney", "fab"]);
+});
+
+test("a blocked source is never searched, listed or accepted, even with links allowed", async () => {
+  const requests = fakeServer();
+  await plugin.action("configure", { allowLinks: true }, ctx);
+  await plugin.tool("search", { query: "crate" }, ctx);
+  assert.doesNotMatch(requests.find((u) => u.pathname === "/v1/search").searchParams.get("providers"), /cgtrader/);
+  assert.equal((await plugin.action("settings", {}, ctx)).sources.some((s) => s.id === "cgtrader"), false);
+  await assert.rejects(plugin.action("configure", { source: "cgtrader", enabled: true }, ctx), /Unknown source/);
+  await assert.rejects(plugin.tool("details", { id: "cgtrader:chair" }, ctx), /CGTrader is not a source this plugin supports/);
 });
 
 test("search asks for free assets only, even when an older version saved a choice that allowed paid ones", async () => {
