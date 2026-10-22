@@ -10,6 +10,8 @@ const PROVIDERS = [
   { id: "polyhaven", name: "Poly Haven", assetTypes: ["model", "hdri"], access: "api", pricing: "free", supportsDownload: true },
   { id: "kenney", name: "Kenney", assetTypes: ["model"], access: "scrape", pricing: "free", supportsDownload: true },
   { id: "fab", name: "Fab", assetTypes: ["model"], access: "link", pricing: "freemium", supportsDownload: false },
+  // Offers downloads from hosts the plugin has not checked, so it is never offered.
+  { id: "mystery", name: "Mystery", assetTypes: ["model"], access: "api", pricing: "free", supportsDownload: true },
 ];
 const CRATE = {
   id: "polyhaven:crate",
@@ -24,6 +26,8 @@ const CRATE = {
 };
 /** A paid listing, as a freemium source returns one when the server's free filter misses it. */
 const PAID = { ...CRATE, id: "polyhaven:paid_crate", title: "Paid crate", price: { free: false, amount: 25, currency: "USD" } };
+/** A listing from a source that only links to its own page. */
+const LINK = { ...CRATE, id: "fab:chair", provider: "fab", title: "Chair", url: "https://www.fab.com/listings/chair", downloadable: false };
 const GLTF = {
   url: "https://dl.polyhaven.org/crate/crate_2k.gltf",
   filename: "crate_2k.gltf",
@@ -109,7 +113,7 @@ function fakeServer({ asset = CRATE, files = [GLTF], assetFiles = files, blobs =
       if (url.pathname === "/v1/providers") return Response.json({ providers: PROVIDERS });
       if (url.pathname === "/v1/search")
         return Response.json({
-          results: [{ ...CRATE, description: "x".repeat(500), tags: ["a"] }, PAID],
+          results: [{ ...CRATE, description: "x".repeat(500), tags: ["a"] }, PAID, LINK, { ...CRATE, id: "mystery:box", provider: "mystery" }],
           providers: [
             { provider: "polyhaven", status: "ok", count: 1 },
             { provider: "fab", status: "link", searchUrl: "https://www.fab.com/search?q=crate" },
@@ -150,19 +154,34 @@ test("search asks only the switched-on sources, with the free filter, and splits
   const answer = await plugin.tool("search", { query: " crate ", types: "model,hdri", limit: 99 }, ctx);
 
   const sent = requests.find((u) => u.pathname === "/v1/search");
-  assert.equal(sent.searchParams.get("providers"), "polyhaven,fab");
+  assert.equal(sent.searchParams.get("providers"), "polyhaven", "only switched-on sources the plugin downloads from");
   assert.equal(sent.searchParams.get("free"), "true");
   assert.equal(sent.searchParams.get("type"), "model,hdri");
   assert.equal(sent.searchParams.get("limit"), "30");
   assert.equal(answer.results[0].id, "polyhaven:crate");
   assert.ok(answer.results[0].description.length <= 200);
   assert.equal(answer.results[0].tags, undefined);
-  assert.deepEqual(answer.results.map((r) => r.id), ["polyhaven:crate"], "a paid listing is left out");
+  assert.deepEqual(answer.results.map((r) => r.id), ["polyhaven:crate"], "paid, link-only and unsupported listings are left out");
   assert.equal("free" in answer.results[0] || "price" in answer.results[0], false);
   assert.equal("freeOnly" in answer, false);
-  assert.deepEqual(answer.alsoSearchOn, [{ source: "fab", url: "https://www.fab.com/search?q=crate" }]);
+  assert.deepEqual(answer.alsoSearchOn, []);
+  assert.equal(answer.allowLinks, false);
   assert.deepEqual(answer.failed, [{ source: "kenney", status: "timeout", error: "took too long" }]);
   assert.deepEqual(answer.switchedOff, ["kenney"]);
+});
+
+test("allowing links adds link-only sources and listings, survives a restart, and never adds unsupported sources", async () => {
+  const requests = fakeServer();
+  await plugin.action("configure", { allowLinks: true }, ctx);
+  const fresh = await activate(/** @type {any} */ ({}));
+  const answer = await fresh.tool("search", { query: "crate" }, ctx);
+  assert.equal(requests.find((u) => u.pathname === "/v1/search").searchParams.get("providers"), "polyhaven,kenney,fab");
+  assert.deepEqual(answer.results.map((r) => r.id), ["polyhaven:crate", "fab:chair"]);
+  assert.deepEqual(answer.alsoSearchOn, [{ source: "fab", url: "https://www.fab.com/search?q=crate" }]);
+  assert.equal(answer.allowLinks, true);
+  const settings = await fresh.action("settings", {}, ctx);
+  assert.equal(settings.allowLinks, true);
+  assert.deepEqual(settings.sources.map((s) => s.id), ["polyhaven", "kenney", "fab"]);
 });
 
 test("search asks for free assets only, even when an older version saved a choice that allowed paid ones", async () => {
@@ -185,21 +204,24 @@ test("details and download refuse a paid asset before fetching any file", async 
 
 test("settings lists every source with its switch, and configure refuses unknown sources", async () => {
   fakeServer();
-  const settings = await plugin.action("configure", { source: "fab", enabled: false }, ctx);
+  const settings = await plugin.action("configure", { source: "kenney", enabled: false }, ctx);
   assert.equal("freeOnly" in settings, false);
+  assert.equal(settings.allowLinks, false);
   assert.equal(settings.sources.some((s) => "pricing" in s), false);
   assert.deepEqual(
     settings.sources.map((s) => [s.id, s.enabled]),
-    [["polyhaven", true], ["kenney", true], ["fab", false]],
+    [["polyhaven", true], ["kenney", false]],
+    "by default only sources the plugin downloads from",
   );
-  await plugin.action("configure", { source: "fab", enabled: true }, ctx);
+  await plugin.action("configure", { source: "kenney", enabled: true }, ctx);
   assert.ok((await plugin.action("settings", {}, ctx)).sources.every((s) => s.enabled));
-  await assert.rejects(plugin.action("configure", { source: "../x", enabled: false }, ctx), /Unknown source/);
+  for (const source of ["../x", "mystery"])
+    await assert.rejects(plugin.action("configure", { source, enabled: false }, ctx), /Unknown source/);
 });
 
 test("search refuses to run with every source switched off", async () => {
   fakeServer();
-  for (const p of PROVIDERS) await plugin.action("configure", { source: p.id, enabled: false }, ctx);
+  for (const source of ["polyhaven", "kenney"]) await plugin.action("configure", { source, enabled: false }, ctx);
   await assert.rejects(plugin.tool("search", { query: "crate" }, ctx), /Every source is switched off/);
 });
 
@@ -291,6 +313,9 @@ test("bad ids and switched-off sources are refused before the server is asked fo
     await assert.rejects(plugin.tool("details", { id }, ctx), /id must be/);
   await plugin.action("configure", { source: "polyhaven", enabled: false }, ctx);
   await assert.rejects(plugin.tool("download", { id: "polyhaven:crate" }, ctx), /Poly Haven is switched off/);
+  await assert.rejects(plugin.tool("details", { id: "fab:chair" }, ctx), /Fab only links to its pages/);
+  await plugin.action("configure", { allowLinks: true }, ctx);
+  await assert.rejects(plugin.tool("details", { id: "mystery:box" }, ctx), /Mystery is not a source this plugin supports/);
   assert.equal(requests.filter((u) => u.pathname.startsWith("/v1/assets")).length, 0);
 });
 
@@ -344,8 +369,10 @@ test("quick switches in the panel all persist", async () => {
   await Promise.all([
     plugin.action("configure", { source: "kenney", enabled: false }, ctx),
     plugin.action("configure", { source: "fab", enabled: false }, ctx),
+    plugin.action("configure", { allowLinks: true }, ctx),
   ]);
   const settings = await plugin.action("settings", {}, ctx);
+  assert.equal(settings.allowLinks, true);
   assert.deepEqual(settings.sources.filter((s) => !s.enabled).map((s) => s.id), ["kenney", "fab"]);
 });
 

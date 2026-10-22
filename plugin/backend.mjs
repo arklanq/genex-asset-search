@@ -8,21 +8,24 @@ import { inflateRawSync } from "node:zlib";
 
 /** The public 3D Asset Server (github.com/arielshad/3d-asset-server). */
 const API = "https://3d.shep.bot";
-/** Hosts the plugin downloads files from, each also matching its subdomains. network.hosts lists each as `host` and `*.host`. */
-const FILE_HOSTS = [
-  "3d.shep.bot",
-  "polyhaven.org",
-  "ambientcg.com",
-  "struffelproductions.com",
-  "blenderkit.com",
-  "kenney.nl",
-  "texturecan.com",
-  "hdrmaps.com",
-  "polyfork.dev",
-  "grab3d.com",
-  "upload.wikimedia.org",
-  "opengameart.org",
-];
+/**
+ * Sources the plugin downloads from, with the hosts their files come from, each also matching its subdomains.
+ * A source joins only once its hosts are checked; network.hosts lists each host as `host` and `*.host`.
+ */
+const SOURCE_HOSTS = {
+  polyhaven: ["polyhaven.org"],
+  ambientcg: ["ambientcg.com", "struffelproductions.com"],
+  blenderkit: ["blenderkit.com"],
+  kenney: ["kenney.nl"],
+  texturecan: ["texturecan.com"],
+  hdrmaps: ["hdrmaps.com"],
+  polyfork: ["polyfork.dev"],
+  grab3d: ["grab3d.com"],
+  wikimediacommons: ["upload.wikimedia.org"],
+  opengameart: ["opengameart.org"],
+};
+/** Hosts the plugin downloads files from: the asset server itself and every source's. */
+const FILE_HOSTS = ["3d.shep.bot", ...Object.values(SOURCE_HOSTS).flat()];
 /** One search fans out to every source, each with its own 12 s limit on the server. */
 const SEARCH_TIMEOUT_MS = 60_000;
 /** How long one download may take; Studio ends a plugin call after 190 s. */
@@ -40,8 +43,8 @@ const DESCRIPTION_CHARS = 200;
 const LISTED_FILES = 40;
 const CONFIG_FILE = "config.json";
 const USER_AGENT = "genex-asset-search/0.1";
-/** Defaults: every source on. */
-const DEFAULT_CONFIG = { disabled: [] };
+/** Defaults: every source on, downloadable assets only. */
+const DEFAULT_CONFIG = { disabled: [], allowLinks: false };
 
 const ASSET_TYPES = ["model", "texture", "material", "hdri", "sprite", "ui", "audio", "font", "pack", "other"];
 const ASSET_ID = /^[a-z0-9]{1,40}:[^\s?#]{1,200}$/;
@@ -69,6 +72,8 @@ const MESSAGE = {
   BadProvider: "Unknown source.",
   NoSources: "Every source is switched off. Open Plugins → 3D Asset Search → Configuration and switch one on.",
   SourceOff: (name) => `${name} is switched off in Configuration; ask the user before using it.`,
+  LinksOff: (name) => `${name} only links to its pages, and the user allows downloadable assets only. Pick an asset from another source.`,
+  Unsupported: (name) => `${name} is not a source this plugin supports.`,
   NotFound: "No asset with that id.",
   NoFiles: (url) => `This asset has no direct download. Send the user to its page: ${url}`,
   NoMatch: "No files match that format and resolution. Call arklanq-asset-search__details to see what is available.",
@@ -89,7 +94,7 @@ const MESSAGE = {
 };
 
 /** @typedef {import('./plugin-sdk/index.d.ts').PluginContext} Context */
-/** @typedef {{ disabled: string[] }} Config */
+/** @typedef {{ disabled: string[], allowLinks: boolean }} Config */
 
 /**
  * Call the asset server and return its JSON, or throw its own reason.
@@ -118,6 +123,22 @@ async function providers(signal) {
   return list;
 }
 
+/** Whether the plugin downloads from a source. @param {any} p */
+const isDownloadSource = (p) => Object.hasOwn(SOURCE_HOSTS, p.id);
+/** Whether a source only links to its pages; one that offers downloads from hosts the plugin has not checked is neither. @param {any} p */
+const isLinkSource = (p) => !isDownloadSource(p) && !p.supportsDownload;
+/** Whether the user can ever use a source, with or without links allowed. @param {any} p */
+const isSupported = (p) => isDownloadSource(p) || isLinkSource(p);
+
+/**
+ * The sources the user can choose from now: the download sources, and the link-only ones when links are allowed.
+ * @param {Config} config
+ * @param {AbortSignal} [signal]
+ */
+async function offered(config, signal) {
+  return (await providers(signal)).filter((p) => isDownloadSource(p) || (config.allowLinks && isLinkSource(p)));
+}
+
 /** @param {Context} ctx */
 const configPath = async (ctx) => path.join(String(await ctx.host("storage.root")), CONFIG_FILE);
 
@@ -131,6 +152,7 @@ async function readConfig(ctx) {
     const saved = JSON.parse(await readFile(await configPath(ctx), "utf8"));
     return {
       disabled: Array.isArray(saved.disabled) ? saved.disabled.filter((id) => typeof id === "string") : [],
+      allowLinks: typeof saved.allowLinks === "boolean" ? saved.allowLinks : DEFAULT_CONFIG.allowLinks,
     };
   } catch {
     return structuredClone(DEFAULT_CONFIG);
@@ -224,7 +246,7 @@ async function search(args, ctx) {
   if (!query) throw new Error(MESSAGE.QueryRequired);
   const types = parseTypes(args.types);
   const config = await readConfig(ctx);
-  const sources = (await providers(ctx.signal)).filter((p) => !config.disabled.includes(p.id));
+  const sources = (await offered(config, ctx.signal)).filter((p) => !config.disabled.includes(p.id));
   if (!sources.length) throw new Error(MESSAGE.NoSources);
   const limit = Math.min(Math.max(Math.trunc(Number(args.limit) || DEFAULT_LIMIT), 1), MAX_LIMIT);
   const params = new URLSearchParams({ q: query, limit: String(limit), providers: sources.map((p) => p.id).join(",") });
@@ -233,12 +255,16 @@ async function search(args, ctx) {
   if (Number(args.offset) > 0) params.set("offset", String(Math.trunc(Number(args.offset))));
   const answer = await server(`/v1/search?${params}`, ctx.signal);
   const report = /** @type {any[]} */ (answer.providers ?? []);
+  const asked = new Set(sources.map((p) => p.id));
+  // The server filters by price already; a freemium source's listing it misses is still left out.
+  const usable = (/** @type {any} */ a) => !isPaid(a) && asked.has(a.provider) && (config.allowLinks || a.downloadable);
+  // Sites that block automated search come back only as a link to their own search.
+  const links = report.filter((r) => r.status === "link" && r.searchUrl).map((r) => ({ source: r.provider, url: r.searchUrl }));
   return {
     query,
-    // The server filters by price already; a freemium source's listing it misses is still left out.
-    results: (answer.results ?? []).filter((a) => !isPaid(a)).map(brief),
-    // Sites that block automated search come back only as a link to their own search.
-    alsoSearchOn: report.filter((r) => r.status === "link" && r.searchUrl).map((r) => ({ source: r.provider, url: r.searchUrl })),
+    allowLinks: config.allowLinks,
+    results: (answer.results ?? []).filter(usable).map(brief),
+    alsoSearchOn: config.allowLinks ? links : [],
     failed: report
       .filter((r) => r.status === "error" || r.status === "timeout")
       .map((r) => ({ source: r.provider, status: r.status, error: r.error })),
@@ -254,11 +280,12 @@ async function search(args, ctx) {
 async function lookup(args, ctx) {
   const id = assetId(args.id);
   const config = await readConfig(ctx);
-  const source = id.split(":")[0];
-  if (config.disabled.includes(source)) {
-    const name = (await providers(ctx.signal)).find((p) => p.id === source)?.name ?? source;
-    throw new Error(MESSAGE.SourceOff(name));
-  }
+  const sourceId = id.split(":")[0];
+  const source = (await providers(ctx.signal)).find((p) => p.id === sourceId);
+  const name = source?.name ?? sourceId;
+  if (!source || !isSupported(source)) throw new Error(MESSAGE.Unsupported(name));
+  if (!config.allowLinks && isLinkSource(source)) throw new Error(MESSAGE.LinksOff(name));
+  if (config.disabled.includes(source.id)) throw new Error(MESSAGE.SourceOff(name));
   const selection = new URLSearchParams();
   if (args.format) selection.set("format", String(args.format));
   if (args.resolution) selection.set("resolution", String(args.resolution));
@@ -505,13 +532,14 @@ async function download(args, ctx) {
 }
 
 /**
- * The source list with each source's switch, for the panel.
+ * The sources the user can choose from now, each with its switch, and the links choice, for the panel.
  * @param {Context} ctx
  */
 async function settings(ctx) {
-  const [config, list] = await Promise.all([readConfig(ctx), providers(ctx.signal)]);
+  const config = await readConfig(ctx);
   return {
-    sources: list.map((p) => ({
+    allowLinks: config.allowLinks,
+    sources: (await offered(config, ctx.signal)).map((p) => ({
       id: p.id,
       name: p.name,
       description: p.description,
@@ -537,10 +565,16 @@ const TOOLS = {
 /** @type {Record<string, (args: Record<string, any>, ctx: Context) => Promise<unknown>>} */
 const ACTIONS = {
   settings: (_args, ctx) => settings(ctx),
-  // One change per call: `{source, enabled}` flips a source.
+  // One change per call: `{source, enabled}` flips a source, `{allowLinks}` flips the links choice.
   async configure(args, ctx) {
+    if (typeof args.allowLinks === "boolean") {
+      await updateConfig(ctx, (config) => {
+        config.allowLinks = args.allowLinks;
+      });
+    }
     if (typeof args.source === "string" && typeof args.enabled === "boolean") {
-      if (!(await providers(ctx.signal)).some((p) => p.id === args.source)) throw new Error(MESSAGE.BadProvider);
+      const known = (await providers(ctx.signal)).some((p) => p.id === args.source && isSupported(p));
+      if (!known) throw new Error(MESSAGE.BadProvider);
       await updateConfig(ctx, (config) => {
         const others = config.disabled.filter((id) => id !== args.source);
         config.disabled = args.enabled ? others : [...others, args.source];
