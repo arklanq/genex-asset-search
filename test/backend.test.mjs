@@ -12,8 +12,9 @@ const PROVIDERS = [
   { id: "fab", name: "Fab", assetTypes: ["model"], access: "link", pricing: "freemium", supportsDownload: false },
   // Offers downloads from hosts the plugin has not checked, so it is never offered.
   { id: "mystery", name: "Mystery", assetTypes: ["model"], access: "api", pricing: "free", supportsDownload: true },
-  // On the plugin's blocklist: it refuses every automated search.
+  // On the plugin's blocklist.
   { id: "cgtrader", name: "CGTrader", assetTypes: ["model"], access: "scrape", pricing: "freemium", supportsDownload: false },
+  { id: "hdrihub", name: "HDRI Hub", assetTypes: ["hdri"], access: "scrape", pricing: "freemium", supportsDownload: false },
 ];
 const CRATE = {
   id: "polyhaven:crate",
@@ -190,10 +191,14 @@ test("a blocked source is never searched, listed or accepted, even with links al
   const requests = fakeServer();
   await plugin.action("configure", { allowLinks: true }, ctx);
   await plugin.tool("search", { query: "crate" }, ctx);
-  assert.doesNotMatch(requests.find((u) => u.pathname === "/v1/search").searchParams.get("providers"), /cgtrader/);
-  assert.equal((await plugin.action("settings", {}, ctx)).sources.some((s) => s.id === "cgtrader"), false);
-  await assert.rejects(plugin.action("configure", { source: "cgtrader", enabled: true }, ctx), /Unknown source/);
-  await assert.rejects(plugin.tool("details", { id: "cgtrader:chair" }, ctx), /CGTrader is not a source this plugin supports/);
+  const asked = requests.find((u) => u.pathname === "/v1/search").searchParams.get("providers");
+  const listed = (await plugin.action("settings", {}, ctx)).sources.map((s) => s.id);
+  for (const { id, name } of PROVIDERS.filter((p) => ["cgtrader", "hdrihub"].includes(p.id))) {
+    assert.equal(asked.split(",").includes(id), false, id);
+    assert.equal(listed.includes(id), false, id);
+    await assert.rejects(plugin.action("configure", { source: id, enabled: true }, ctx), /Unknown source/);
+    await assert.rejects(plugin.tool("details", { id: `${id}:x` }, ctx), new RegExp(`${name} is not a source this plugin supports`));
+  }
 });
 
 test("search asks for free assets only, even when an older version saved a choice that allowed paid ones", async () => {

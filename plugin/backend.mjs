@@ -24,8 +24,16 @@ const SOURCE_HOSTS = {
   wikimediacommons: ["upload.wikimedia.org"],
   opengameart: ["opengameart.org"],
 };
-/** Sources the plugin never uses, whatever the server says: CGTrader refuses every automated search. */
-const BLOCKED_SOURCES = ["cgtrader"];
+/** Sources the plugin never uses, whatever the server says. Each entry says why, so it can be removed once that changes. */
+const BLOCKED_SOURCES = [
+  // CGTrader's bot protection (AWS WAF challenge) refuses the asset server's every search, so each one only adds an error.
+  // Checked 2026-10-22.
+  "cgtrader",
+  // HDRI Hub's site renamed its CSS classes (search_card became k_W5dq_card), and the asset server still looks for the
+  // old ones, so it reports 0 results with status ok for every query. Checked 2026-10-22; remove once the server reads the
+  // new markup (src/providers/hdrihub.ts, parseSearch).
+  "hdrihub",
+];
 /** Hosts the plugin downloads files from: the asset server itself and every source's. */
 const FILE_HOSTS = ["3d.shep.bot", ...Object.values(SOURCE_HOSTS).flat()];
 /** One search fans out to every source, each with its own 12 s limit on the server. */
