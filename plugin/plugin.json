@@ -1,7 +1,7 @@
 {
   "apiVersion": 3,
   "id": "arklanq-asset-search",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "name": "3D Asset Search",
   "publisher": "Arek Nurzyński",
   "description": "Search many sites for free 3D models, materials, textures and HDRIs at once and bring them into the game, through 3D Asset Server.",
