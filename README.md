@@ -42,4 +42,4 @@ npm run plugin:doctor -- /path/to/genex-asset-search/plugin
 
 ## Release
 
-Bump `version` in `plugin/plugin.json` and `package.json`, commit, then push a matching tag, such as `v0.2.0`. The workflow publishes a GitHub release with `arklanq-asset-search-<version>.zip`.
+Bump `version` in `plugin/plugin.json` and `package.json`, commit, then push a matching tag, such as `v0.2.0`. The workflow publishes a GitHub release with `arklanq-asset-search-<version>.zip` and the catalog artifact `arklanq-asset-search-<version>.json`, written by `scripts/pack-artifact.mjs`.
