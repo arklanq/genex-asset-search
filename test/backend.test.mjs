@@ -345,6 +345,19 @@ test("download takes files from the hosts of every source that offers downloads"
   }
 });
 
+test("download of a listing that only links to its page sends the user to the page, without fetching any file", async () => {
+  const page = { url: "https://www.fab.com/listings/chair", filename: "chair", format: "other" };
+  const requests = fakeServer({ asset: LINK, files: [page] });
+  await plugin.action("configure", { allowLinks: true }, ctx);
+  await assert.rejects(plugin.tool("download", { id: LINK.id }, ctx), (error) => {
+    assert.match(error.message, /no direct download/);
+    assert.ok(error.message.includes(LINK.url));
+    assert.doesNotMatch(error.message, /not a host/);
+    return true;
+  });
+  assert.equal(requests.some((u) => u.hostname !== "3d.shep.bot"), false);
+});
+
 test("details marks an asset not downloadable when a file comes from a host the plugin does not download from", async () => {
   const outside = { ...GLTF, includes: [{ path: "crate.bin", url: "https://cdn.unknown.example/crate.bin" }] };
   fakeServer({ files: [outside] });

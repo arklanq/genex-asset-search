@@ -484,7 +484,8 @@ async function unpackEntries(zip, dir) {
  */
 async function download(args, ctx) {
   const { asset, files } = await lookup(args, ctx);
-  if (!asset.files?.length && !files.length) throw new Error(MESSAGE.NoFiles(asset.url));
+  // A listing that only links to its page may still name that page as a file; it is not one to fetch.
+  if (asset.downloadable === false || (!asset.files?.length && !files.length)) throw new Error(MESSAGE.NoFiles(asset.url));
   // The server's file selection leaves out files behind a login, so an asset with only those selects none.
   const loginOnly = asset.files?.length && asset.files.every((/** @type {any} */ f) => f.requiresAuth);
   if (files.some((f) => f.requiresAuth) || (!files.length && loginOnly)) throw new Error(MESSAGE.NeedsLogin(asset.url));
