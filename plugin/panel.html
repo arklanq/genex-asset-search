@@ -62,16 +62,6 @@ ul { list-style: none; }
 .option + .option { margin-block-start: 2px; }
 .text { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 2px; }
 .name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-weight: 500; }
-.tag {
-  padding: 0 6px;
-  border-radius: 6px;
-  background: var(--line);
-  color: var(--ink-3);
-  font: 11px / 18px var(--mono);
-  white-space: nowrap;
-}
-.lead { margin-block-start: 16px; padding-block-end: 4px; border-block-end: 1px solid var(--line); }
-.lead .option { margin-block-end: 12px; }
 /* The switch itself: a pill with a sliding knob, accent-filled when on. */
 .switch {
   position: relative;
@@ -129,17 +119,7 @@ body[data-ready] .spinner { display: none; }
 <div class="spinner" id="spinner" role="status" aria-label="Loading"></div>
 <section class="card" aria-labelledby="title">
   <h2 id="title">Search sources</h2>
-  <p class="muted">Agents search only the sources switched on here, and only for the kind of asset you allow.</p>
-  <div class="lead">
-    <label class="option" for="paid">
-      <span class="text">
-        <span class="name" id="free-title"></span>
-        <span class="muted small" id="free-line"></span>
-      </span>
-      <!-- The visible title follows the choice; the switch keeps one name so "on" always means paid assets are allowed. -->
-      <button class="switch" id="paid" role="switch" aria-checked="false" aria-label="Include paid assets"></button>
-    </label>
-  </div>
+  <p class="muted">Agents search only the sources switched on here, and bring in free assets only.</p>
   <h3><span>Sources</span><span id="count"></span></h3>
   <ul id="sources"></ul>
   <p class="error" id="error" role="alert"></p>
@@ -235,15 +215,10 @@ window.studioPlugin.ui = {
 </script>
 <script>
 const WORDS = {
-  freeOnTitle: "Free assets only",
-  freeOffTitle: "Free and paid assets",
-  freeOn: "Paid listings are left out of every search.",
-  freeOff: "Paid listings show up too, with their price and a link. Agents never buy anything; they ask you.",
   count: (on, all) => `${on} of ${all} on`,
   direct: "Downloads into the game",
   page: "Links to the asset page",
   link: "Links to the site's own search",
-  pricing: { free: "Free", freemium: "Free + paid", paid: "Paid" },
 };
 const TYPE_NAMES = { hdri: "HDRIs", ui: "UI", audio: "audio", other: "other" };
 
@@ -295,11 +270,7 @@ function sourceRow(source) {
   const row = document.createElement("li");
   row.innerHTML = `<label class="option"><span class="text"><span class="name"></span><span class="muted small"></span></span><button class="switch" role="switch"></button></label>`;
   const label = row.firstElementChild;
-  const name = label.querySelector(".name");
-  const tag = document.createElement("span");
-  tag.className = "tag";
-  tag.textContent = WORDS.pricing[source.pricing] ?? source.pricing;
-  name.append(source.name, tag);
+  label.querySelector(".name").textContent = source.name;
   label.querySelector(".small").textContent = sourceLine(source);
   label.title = source.description;
   const toggle = label.querySelector(".switch");
@@ -312,10 +283,6 @@ function sourceRow(source) {
 
 function render(next) {
   state = next;
-  // The switch reads the other way round from the setting: on lets paid assets in.
-  $("paid").setAttribute("aria-checked", String(!state.freeOnly));
-  $("free-title").textContent = state.freeOnly ? WORDS.freeOnTitle : WORDS.freeOffTitle;
-  $("free-line").textContent = state.freeOnly ? WORDS.freeOn : WORDS.freeOff;
   $("count").textContent = WORDS.count(state.sources.filter((s) => s.enabled).length, state.sources.length);
   // Rebuilding the rows drops keyboard focus, so hand it to the same source's new switch.
   const focused = document.activeElement?.id;
@@ -329,8 +296,7 @@ async function flip(toggle, change) {
   const before = state;
   const mine = ++generation;
   const optimistic = structuredClone(state);
-  if ("freeOnly" in change) optimistic.freeOnly = change.freeOnly;
-  else optimistic.sources.find((s) => s.id === change.source).enabled = change.enabled;
+  optimistic.sources.find((s) => s.id === change.source).enabled = change.enabled;
   render(optimistic);
   document.getElementById(toggle.id).disabled = true;
   showError("");
@@ -363,8 +329,6 @@ function reveal() {
   document.body.dataset.ready = "";
   $("spinner").removeAttribute("role");
 }
-
-$("paid").onclick = () => state && flip($("paid"), { freeOnly: !state.freeOnly });
 
 const stop = window.studioPlugin.onContextChanged(() => {
   applyTheme();
